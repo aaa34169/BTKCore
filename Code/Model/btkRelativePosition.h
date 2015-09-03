@@ -38,29 +38,30 @@
 
 #include "btkModelExport.h"
 #include "btkNode.h"
+#include "btkMacros.h" // _BTK_NOEXCEPT
 
 namespace btk
 {
   class RelativePositionPrivate;
   
-  class BTK_MODEL_EXPORT RelativePosition : public Node
+  class BTK_NODE(BTK_MODEL_EXPORT, RelativePosition) : public Node
   {
     BTK_DECLARE_PIMPL_ACCESSOR(RelativePosition)
     
   public:
     RelativePosition(const std::string& name, const double coordinates[3], Node* parent = nullptr);
-    ~RelativePosition() noexcept;
+    ~RelativePosition() _BTK_NOEXCEPT;
     
     RelativePosition(const RelativePosition& ) = delete;
-    RelativePosition(RelativePosition&& ) noexcept = delete;
+    RelativePosition(RelativePosition&& ) _BTK_NOEXCEPT = delete;
     RelativePosition& operator=(const RelativePosition& ) = delete;
-    RelativePosition& operator=(RelativePosition&& ) noexcept = delete;
+    RelativePosition& operator=(RelativePosition&& ) _BTK_NOEXCEPT = delete;
     
-    const double* data() const noexcept;
-    double* data() noexcept;
+    const double* data() const _BTK_NOEXCEPT;
+    double* data() _BTK_NOEXCEPT;
     
   private:
-    RelativePosition(RelativePositionPrivate& pimpl, Node* parent) noexcept;
+    RelativePosition(RelativePositionPrivate& pimpl, Node* parent) _BTK_NOEXCEPT;
   };
 };
 

@@ -25,6 +25,15 @@ CXXTEST_SUITE(AnyTest)
     TS_ASSERT_EQUALS(b.cast<double>(),12.5);
   };
   
+  CXXTEST_TEST(Single_Char)
+  {
+    btk::Any c = 'a';
+    TS_ASSERT_EQUALS(c.cast<int>(),97);
+    TS_ASSERT_EQUALS(static_cast<float>(c),97.0f);
+    TS_ASSERT_EQUALS(c.cast<char>(),'a');
+    TS_ASSERT_EQUALS(c.cast<std::string>(),"97"); // Because internally a (signed) char is casted into a (signed) short int before to be converted into a string. This was chosen to priorize int8_t to string conversion.
+  };
+  
   CXXTEST_TEST(Single_Comparison)
   {
     btk::Any a = 12;
@@ -244,7 +253,7 @@ CXXTEST_SUITE(AnyTest)
   {
     // Initializer constructor
     // - Dimensions and values matching
-    std::vector<int> foo = {1,2,3,4}; // std::vecotr<int>{{1,2,3,4}};
+    std::vector<int> foo = {1,2,3,4};
     btk::Any a = btk::Any({1,2,3,4},{2,2});
     TS_ASSERT_EQUALS(a.dimensions().empty(),false);
     TS_ASSERT_EQUALS(a.dimensions().size(),2ul);
@@ -321,7 +330,7 @@ CXXTEST_SUITE(AnyTest)
     TS_ASSERT_EQUALS(strcmp(toto[0],"Coco"),0);
     TS_ASSERT_EQUALS(strcmp(toto[1],"Vroum"),0);
     TS_ASSERT_EQUALS(strcmp(toto[2],"Another"),0);
-    a = btk::Any(std::vector<std::string>({"Coco","Vroum","Another"}),std::vector<size_t>({4}));
+    a = btk::Any(std::vector<std::string>({"Coco","Vroum","Another"}),std::vector<size_t>(1,4));
     auto bar = a.cast<std::vector<std::string>>();
     TS_ASSERT_EQUALS(bar.size(),4ul);
     TS_ASSERT_EQUALS(bar[0],std::string("Coco"));
@@ -333,6 +342,22 @@ CXXTEST_SUITE(AnyTest)
     TS_ASSERT_EQUALS(a.cast<std::string>(2),std::string("Another"));
     TS_ASSERT_EQUALS(a.cast<std::string>(3),std::string(""));
   };
+  
+  CXXTEST_TEST(Array_String_Empty)
+  {
+    std::vector<std::string> p;
+    std::vector<size_t> dims{0};
+    btk::Any a{p,dims};
+    TS_ASSERT_EQUALS(a.isValid(),true);
+    TS_ASSERT_EQUALS(a.isEmpty(),true);
+    p = {{"foo"}};
+    a = p;
+    TS_ASSERT_EQUALS(a.isValid(),true);
+    TS_ASSERT_EQUALS(a.isEmpty(),false);
+    a = std::vector<std::string>{};
+    TS_ASSERT_EQUALS(a.isValid(),true);
+    TS_ASSERT_EQUALS(a.isEmpty(),true);
+  }
   
   CXXTEST_TEST(Array_CustomType)
   {
@@ -394,12 +419,27 @@ CXXTEST_SUITE(AnyTest)
     TS_ASSERT_EQUALS(m.cast<std::vector<std::string>>(),std::vector<std::string>({"1","4"}));
     TS_ASSERT_EQUALS(m.cast<std::vector<myEnum>>(),std::vector<myEnum>({myEnum::Foo,myEnum::Toto}));
   };
+  
+  CXXTEST_TEST(Array_Char)
+  {
+    std::array<char,4> foo{{'a','b','c','d'}};
+    btk::Any a = foo;
+    TS_ASSERT_EQUALS(a.cast<char>(0),'a');
+    TS_ASSERT_EQUALS(a.cast<char>(1),'b');
+    TS_ASSERT_EQUALS(a.cast<char>(2),'c');
+    TS_ASSERT_EQUALS(a.cast<char>(3),'d');
+    TS_ASSERT_EQUALS(a.cast<std::vector<char>>(),std::vector<char>({'a','b','c','d'}));
+    TS_ASSERT_EQUALS(a.cast<std::vector<int>>(),std::vector<int>({97,98,99,100}));
+    TS_ASSERT_EQUALS(a.cast<std::vector<std::string>>(),std::vector<std::string>({"97","98","99","100"}));
+    
+  }
 };
 
 CXXTEST_SUITE_REGISTRATION(AnyTest)
   
 CXXTEST_TEST_REGISTRATION(AnyTest, Single_Int)
 CXXTEST_TEST_REGISTRATION(AnyTest, Single_Float)
+CXXTEST_TEST_REGISTRATION(AnyTest, Single_Char)
 CXXTEST_TEST_REGISTRATION(AnyTest, Single_Comparison)
 CXXTEST_TEST_REGISTRATION(AnyTest, Single_Comparison2)
 CXXTEST_TEST_REGISTRATION(AnyTest, Single_Int8ToString)
@@ -421,9 +461,11 @@ CXXTEST_TEST_REGISTRATION(AnyTest, Array_Int_Initializer2)
 CXXTEST_TEST_REGISTRATION(AnyTest, Array_Int_Initializer3)
 CXXTEST_TEST_REGISTRATION(AnyTest, Array_Int_Comparison)
 CXXTEST_TEST_REGISTRATION(AnyTest, Array_String)
+CXXTEST_TEST_REGISTRATION(AnyTest, Array_String_Empty)
 CXXTEST_TEST_REGISTRATION(AnyTest, Array_FromSingle)
 CXXTEST_TEST_REGISTRATION(AnyTest, Array_FromSingle_CustomType)
 CXXTEST_TEST_REGISTRATION(AnyTest, Array_Int_Array)
 CXXTEST_TEST_REGISTRATION(AnyTest, Array_Enum)
+CXXTEST_TEST_REGISTRATION(AnyTest, Array_Char)
 
 #endif // AnyTest_h

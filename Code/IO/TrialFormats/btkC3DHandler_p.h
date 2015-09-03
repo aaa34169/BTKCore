@@ -43,7 +43,7 @@
 
 #include "btkIOHandler_p.h"
 #include "btkC3DHandler.h"
-#include "btkMacros.h"
+#include "btkMacros.h" // _BTK_NOEXCEPT
 
 #include <type_traits>
 #include <vector>
@@ -56,19 +56,19 @@ namespace btk
   {
     BTK_DECLARE_IOHANDLER_OPTIONS(
       make_option<C3DHandler::EncodingFormat>::single_choice<C3DHandler::Encoding::Binary>(),
-      make_option<C3DHandler::ByteOrderFormat>::multiple_choices<C3DHandler::ByteOrder::VAXLittleEndian,C3DHandler::ByteOrder::IEEELittleEndian,C3DHandler::ByteOrder::IEEEBigEndian>::init(C3DHandler::ByteOrder::Native),
-      make_option<C3DHandler::DataStorageFormat>::multiple_choices<C3DHandler::DataStorage::Integer,C3DHandler::DataStorage::Float>::init(C3DHandler::DataStorage::Float),
-      make_option<C3DHandler::AnalogStorageFormat>::multiple_choices<C3DHandler::AnalogStorage::Signed,C3DHandler::AnalogStorage::Unsigned>::init(C3DHandler::AnalogStorage::Signed)
+      make_option<C3DHandler::ByteOrderFormat>::multiple_choices<C3DHandler::ByteOrder::VAXLittleEndian,C3DHandler::ByteOrder::IEEELittleEndian,C3DHandler::ByteOrder::IEEEBigEndian>::initial_value(C3DHandler::ByteOrder::Native),
+      make_option<C3DHandler::DataStorageFormat>::multiple_choices<C3DHandler::DataStorage::Integer,C3DHandler::DataStorage::Float>::initial_value(C3DHandler::DataStorage::Float),
+      make_option<C3DHandler::AnalogStorageFormat>::multiple_choices<C3DHandler::AnalogStorage::Signed,C3DHandler::AnalogStorage::Unsigned>::initial_value(C3DHandler::AnalogStorage::Signed)
     )
     
   public:
     C3DHandlerPrivate();
-    ~C3DHandlerPrivate() noexcept;
+    ~C3DHandlerPrivate() _BTK_NOEXCEPT;
 
     C3DHandlerPrivate(const C3DHandlerPrivate& ) = delete;
-    C3DHandlerPrivate(C3DHandlerPrivate&& ) noexcept = delete;
+    C3DHandlerPrivate(C3DHandlerPrivate&& ) _BTK_NOEXCEPT = delete;
     C3DHandlerPrivate& operator=(const C3DHandlerPrivate& ) = delete;
-    C3DHandlerPrivate& operator=(const C3DHandlerPrivate&& ) noexcept = delete;
+    C3DHandlerPrivate& operator=(const C3DHandlerPrivate&& ) _BTK_NOEXCEPT = delete;
     
     double PointScale;
     int PointMaximumInterpolationGap;
@@ -81,7 +81,7 @@ namespace btk
     template <typename T>
     static inline typename std::enable_if<!std::is_same<T,std::string>::value,T>::type generateDefaultValue(T&& blank, int idx)
     {
-      BTK_UNUSED(idx);
+      _BTK_UNUSED(idx);
       return blank;
     };
   
@@ -111,9 +111,9 @@ namespace btk
     virtual void writeAnalog(double v) = 0;
     
     C3DDataStream(const C3DDataStream& ) = delete;
-    C3DDataStream(C3DDataStream&& ) noexcept = delete;
+    C3DDataStream(C3DDataStream&& ) _BTK_NOEXCEPT = delete;
     C3DDataStream& operator=(const C3DDataStream& ) = delete;
-    C3DDataStream& operator=(const C3DDataStream&& ) noexcept = delete;
+    C3DDataStream& operator=(const C3DDataStream&& ) _BTK_NOEXCEPT = delete;
     
   protected:
     BinaryStream* Raw;

@@ -23,13 +23,19 @@ SET(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
 SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  SET(CMAKE_CXX_FLAGS "-stdlib=libc++ -fno-rtti")
-  # CMake complains it does not know how to set the compile flag to enable C++11 
+IF((CMAKE_SYSTEM_NAME STREQUAL "Darwin") AND (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
+  SET(CMAKE_CXX_FLAGS "-stdlib=libc++")
+  # CMake 3.1 complains it does not know how to set the compile flag to enable C++11 with (Apple) Clang
   SET(CMAKE_CXX11_STANDARD_COMPILE_OPTION "-std=c++11")
   SET(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "-std=gnu++11")
-ELSE()
-  SET(CMAKE_CXX_FLAGS "-fno-rtti")
+ELSEIF((CMAKE_SYSTEM_NAME STREQUAL "Windows") AND MSVC)
+  # CMake 3.1 complains it does not know how to set the compile flag to enable C++11 with MSVC
+  SET(CMAKE_CXX11_STANDARD_COMPILE_OPTION "")
+  SET(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "")
+  # CXX Flag details
+  #  - EHsc: enable exception handling for C++ object
+  #  - D_SCL_SECURE_NO_WARNINGS: disable function call with unsafe parameters warning
+  SET(CMAKE_CXX_FLAGS "/EHsc -D_SCL_SECURE_NO_WARNINGS")
 ENDIF()
 
 # ------------------------------------------------------------------------
@@ -64,6 +70,7 @@ SET(BTK_EXECUTABLE_PATH "${EXECUTABLE_OUTPUT_PATH}")
 INCLUDE(CheckIncludeFile)
 INCLUDE(GenerateExportHeader)
 INCLUDE(CMakePackageConfigHelpers)
+INCLUDE(TestBigEndian)
 
 # By default BTK is compiled in Release mode
 IF(NOT CMAKE_BUILD_TYPE)
@@ -73,13 +80,26 @@ IF(NOT CMAKE_BUILD_TYPE)
   SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 ENDIF()
 
+# 64-bit OS detection
+IF((CMAKE_SIZEOF_VOID_P EQUAL 8) OR CMAKE_CL_64)
+  SET(HAVE_64_BIT_COMPILER 1)
+ENDIF()
+
+# Detect the OS endianness
+TEST_BIG_ENDIAN(HAVE_BIGENDIAN)
+
 # Try to find mmap
 CHECK_INCLUDE_FILE(sys/mman.h HAVE_SYS_MMAP)
 
 # Extra compiler flags for the debug mode
-INCLUDE(${BTK_CMAKE_MODULE_PATH}/btkExtraCompilerFlags.cmake)
+INCLUDE(${BTK_CMAKE_MODULE_PATH}/ExtraCXXFlagsDebug.cmake)
 
-# BTK build configuration options.
+# Custom target for Coverity integrated with Travis-ci
+INCLUDE(${BTK_CMAKE_MODULE_PATH}/CoverityCustomTarget.cmake)
+# Custom target for Coveralls integrated with Travis-ci
+INCLUDE(${BTK_CMAKE_MODULE_PATH}/CoverallsCustomTarget.cmake)
+
+# BTK build configuration option.
 OPTION(BUILD_SHARED_LIBS "Build BTK with shared libraries." OFF)
 SET(BTK_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
 IF(WIN32)
@@ -88,6 +108,12 @@ IF(WIN32)
    ELSE(BUILD_SHARED_LIBS)
      SET(BTK_LIBS_BUILD_TYPE "STATIC")
    ENDIF(BUILD_SHARED_LIBS)
+ENDIF()
+
+# BTK build API documentation option
+OPTION(BUILD_DOCUMENTATION_API "Build API Documentation with Doxygen." OFF)
+IF(BUILD_DOCUMENTATION_API)
+  ADD_SUBDIRECTORY(Utilities/Doxygen)
 ENDIF()
 
 # Configure files with settings for use by the build.
@@ -108,10 +134,6 @@ SET(BTK_LIBRARY_PROPERTIES
   DEBUG_POSTFIX _debug)
 
 # ------------------------------------------------------------------------
-# INSTALLATION VARIABLES
-# ------------------------------------------------------------------------
-
-# ------------------------------------------------------------------------
 # PROJECT'S SUBDIRECTORIES
 # ------------------------------------------------------------------------
 
@@ -125,6 +147,10 @@ SET(BTK_INCLUDE_DIRS_BUILD_TREE
   "${BTK_SOURCE_DIR}/ThirdParties/eigen3"
   "${BTK_SOURCE_DIR}/Utilities")
 
+# Extra libraries required (e.g. eigen3, CxxTest, Open3DMotion)
+# This subdirectory is added first to compile required external shared libraries
+ADD_SUBDIRECTORY(ThirdParties)
+
 # Code
 ADD_SUBDIRECTORY(Code)
 
@@ -135,9 +161,6 @@ IF(BUILD_TESTING)
   ADD_SUBDIRECTORY(Testing)
 ENDIF(BUILD_TESTING)
 
-# Extra library required (e.g. eigen3, CxxTest, Open3DMotion)
-ADD_SUBDIRECTORY(ThirdParties)
-
 # ------------------------------------------------------------------------
 # INSTALLATION INSTRUCTIONS
 # ------------------------------------------------------------------------
@@ -145,38 +168,45 @@ ADD_SUBDIRECTORY(ThirdParties)
 # Export the package for use from the build-tree
 # (this registers the build-tree with a global CMake-registry)
 EXPORT(PACKAGE BTK)
-SET(BTK_CMAKE_CONFIG_PACKAGE_LOCATION lib/cmake/BTK CACHE STRING "CMake scripts installation path")
-SET(BTK_INCLUDE_INSTALL_DIR include/ CACHE STRING "BTK development headers inclusion path")
 
 # Create the BTKConfig.cmake and BTKConfigVersion.cmake files
-SET(CONF_INCLUDE_DIRS "${BTK_INCLUDE_DIRS_BUILD_TREE}")
-CONFIGURE_PACKAGE_CONFIG_FILE(CMake/BTKConfig.cmake.in "${PROJECT_BINARY_DIR}/BTKConfig.cmake"
-  INSTALL_DESTINATION ${BTK_CMAKE_CONFIG_PACKAGE_LOCATION}
-  PATH_VARS BTK_INCLUDE_INSTALL_DIR)
+
+# Build tree
+# ==========
+
+SET(INCLUDE_INSTALL_DIR "${BTK_SOURCE_DIR}")
+
+CONFIGURE_PACKAGE_CONFIG_FILE("CMake/BTKConfig.cmake.in" "${BTK_BINARY_DIR}/BTKConfig.cmake"
+  INSTALL_DESTINATION ${BTK_BINARY_DIR}
+  PATH_VARS INCLUDE_INSTALL_DIR)
+
 WRITE_BASIC_PACKAGE_VERSION_FILE(
-  "${PROJECT_BINARY_DIR}/BTKConfigVersion.cmake"
+  "${BTK_BINARY_DIR}/BTKConfigVersion.cmake"
   VERSION ${BTK_VERSION}
   COMPATIBILITY SameMajorVersion
 )
+
 EXPORT(EXPORT BTKTargets
-  FILE "${PROJECT_BINARY_DIR}/BTKTargets.cmake"
+  FILE "${BTK_BINARY_DIR}/BTKTargets.cmake"
   NAMESPACE BTK::
 )
 
-INSTALL(EXPORT BTKTargets
-  FILE
-    BTKTargets.cmake
-  NAMESPACE
-    BTK::
-  DESTINATION
-    ${BTK_CMAKE_CONFIG_PACKAGE_LOCATION}
+# Install tree
+# ============
+
+SET(INCLUDE_INSTALL_DIR "${BTK_INSTALL_DIR}/include")
+
+CONFIGURE_PACKAGE_CONFIG_FILE("CMake/BTKConfig.cmake.in" "${BTK_BINARY_DIR}/cmake/BTKConfig.cmake"
+  INSTALL_DESTINATION "${BTK_BINARY_DIR}/cmake"
+  PATH_VARS INCLUDE_INSTALL_DIR)
+
+WRITE_BASIC_PACKAGE_VERSION_FILE(
+  "${BTK_BINARY_DIR}/cmake/BTKConfigVersion.cmake"
+  VERSION ${BTK_VERSION}
+  COMPATIBILITY SameMajorVersion
 )
-INSTALL(
-  FILES
-    "${PROJECT_BINARY_DIR}/BTKConfig.cmake"
-    "${PROJECT_BINARY_DIR}/BTKConfigVersion.cmake"
-  DESTINATION
-    ${BTK_CMAKE_CONFIG_PACKAGE_LOCATION}
-  COMPONENT
-    dev
+
+EXPORT(EXPORT BTKTargets
+  FILE "${BTK_BINARY_DIR}/cmake/BTKTargets.cmake"
+  NAMESPACE BTK::
 )

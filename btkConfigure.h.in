@@ -41,11 +41,14 @@
 #define BTK_VERSION_PATCH @BTK_VERSION_PATCH@
 #define BTK_VERSION_STRING "@BTK_VERSION_STRING@"
 
-// Compiled on a 64 bit OS?
-#cmakedefine HAVE_64_BIT
+// Compiled with a 64-bit compiler?
+#cmakedefine HAVE_64_BIT_COMPILER
 
 // Looking for mmap
 #cmakedefine HAVE_SYS_MMAP
+
+// Looking for the OS endianness
+#cmakedefine HAVE_BIGENDIAN
 
 // Check if the processor is supported
 #define BTK_ARCH_VAX_LE 2  /* VAX LittleEndian */
@@ -74,6 +77,13 @@
   #endif
 #else
   #error Development platform not supported
+#endif
+
+#if defined(_MSC_VER)
+  // Disable warning for too long decorated name
+  // See: https://msdn.microsoft.com/en-us/library/074af4b6.aspx
+  // NOTE: This warning is raised when complex btk::lard expressions are used.
+  #pragma warning(disable : 4503)
 #endif
 
 // Addons for Eigen

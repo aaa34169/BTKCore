@@ -44,6 +44,7 @@
 #include "btkRig_p.h"
 #include "btkProperty.h"
 #include "btklardXpr.h"
+#include "btkMacros.h" // _BTK_CONSTEXPR
 
 #include <unordered_map>
 
@@ -59,41 +60,41 @@ namespace btk
     
     BTK_DECLARE_NODEID(PluginGait, Rig)
     BTK_DECLARE_STATIC_PROPERTIES(PluginGait, Rig,
-      Property<PluginGait,double>("markerDiameter",&PluginGait::markerDiameter,&PluginGait::setMarkerDiameter),
-      Property<PluginGait,double>("headOffset",&PluginGait::headOffset,&PluginGait::setHeadOffset),
-      Property<PluginGait,double>("rightShoulderOffset",&PluginGait::rightShoulderOffset,&PluginGait::setRightShoulderOffset),
-      Property<PluginGait,double>("leftShoulderOffset",&PluginGait::leftShoulderOffset,&PluginGait::setLeftShoulderOffset),
-      Property<PluginGait,double>("rightElbowWidth",&PluginGait::rightElbowWidth,&PluginGait::setRightElbowWidth),
-      Property<PluginGait,double>("leftElbowWidth",&PluginGait::leftElbowWidth,&PluginGait::setLeftElbowWidth),
-      Property<PluginGait,double>("rightWristWidth",&PluginGait::rightWristWidth,&PluginGait::setRightWristWidth),
-      Property<PluginGait,double>("leftWristWidth",&PluginGait::leftWristWidth,&PluginGait::setLeftWristWidth),
-      Property<PluginGait,double>("rightHandThickness",&PluginGait::rightHandThickness,&PluginGait::setRightHandThickness),
-      Property<PluginGait,double>("leftHandThickness",&PluginGait::leftHandThickness,&PluginGait::setLeftHandThickness),
-      Property<PluginGait,double>("interAsisDistance",&PluginGait::interAsisDistance,&PluginGait::setInterAsisDistance),
-      Property<PluginGait,double>("rightLegLength",&PluginGait::rightLegLength,&PluginGait::setRightLegLength),
-      Property<PluginGait,double>("leftLegLength",&PluginGait::leftLegLength,&PluginGait::setLeftLegLength),
-      Property<PluginGait,double>("rightAsisTrochanterAPDistance",&PluginGait::rightAsisTrochanterAPDistance,&PluginGait::setRightAsisTrochanterAPDistance),
-      Property<PluginGait,double>("leftAsisTrochanterAPDistance",&PluginGait::leftAsisTrochanterAPDistance,&PluginGait::setLeftAsisTrochanterAPDistance),
-      Property<PluginGait,double>("rightKneeWidth",&PluginGait::rightKneeWidth,&PluginGait::setRightKneeWidth),
-      Property<PluginGait,double>("leftKneeWidth",&PluginGait::leftKneeWidth,&PluginGait::setLeftKneeWidth),
-      Property<PluginGait,double>("rightAnkleWidth",&PluginGait::rightAnkleWidth,&PluginGait::setRightAnkleWidth),
-      Property<PluginGait,double>("leftAnkleWidth",&PluginGait::leftAnkleWidth,&PluginGait::setLeftAnkleWidth),
-      Property<PluginGait,bool>("rightFootFlat",&PluginGait::rightFootFlat,&PluginGait::setRightFootFlat),
-      Property<PluginGait,bool>("leftFootFlat",&PluginGait::leftFootFlat,&PluginGait::setRightFootFlat),
-      Property<PluginGait,double>("rightStaticPlantarFlexionOffset",&PluginGait::rightStaticPlantarFlexionOffset),
-      Property<PluginGait,double>("rightStaticRotationOffset",&PluginGait::rightStaticRotationOffset),
-      Property<PluginGait,double>("leftStaticPlantarFlexionOffset",&PluginGait::leftStaticPlantarFlexionOffset),
-      Property<PluginGait,double>("leftStaticRotationOffset",&PluginGait::leftStaticRotationOffset)
+      Property<PluginGait,double,&PluginGait::markerDiameter,&PluginGait::setMarkerDiameter>{"markerDiameter"},
+      Property<PluginGait,double,&PluginGait::headOffset,&PluginGait::setHeadOffset>{"headOffset"},
+      Property<PluginGait,double,&PluginGait::rightShoulderOffset,&PluginGait::setRightShoulderOffset>{"rightShoulderOffset"},
+      Property<PluginGait,double,&PluginGait::leftShoulderOffset,&PluginGait::setLeftShoulderOffset>{"leftShoulderOffset"},
+      Property<PluginGait,double,&PluginGait::rightElbowWidth,&PluginGait::setRightElbowWidth>{"rightElbowWidth"},
+      Property<PluginGait,double,&PluginGait::leftElbowWidth,&PluginGait::setLeftElbowWidth>{"leftElbowWidth"},
+      Property<PluginGait,double,&PluginGait::rightWristWidth,&PluginGait::setRightWristWidth>{"rightWristWidth"},
+      Property<PluginGait,double,&PluginGait::leftWristWidth,&PluginGait::setLeftWristWidth>{"leftWristWidth"},
+      Property<PluginGait,double,&PluginGait::rightHandThickness,&PluginGait::setRightHandThickness>{"rightHandThickness"},
+      Property<PluginGait,double,&PluginGait::leftHandThickness,&PluginGait::setLeftHandThickness>{"leftHandThickness"},
+      Property<PluginGait,double,&PluginGait::interAsisDistance,&PluginGait::setInterAsisDistance>{"interAsisDistance"},
+      Property<PluginGait,double,&PluginGait::rightLegLength,&PluginGait::setRightLegLength>{"rightLegLength"},
+      Property<PluginGait,double,&PluginGait::leftLegLength,&PluginGait::setLeftLegLength>{"leftLegLength"},
+      Property<PluginGait,double,&PluginGait::rightAsisTrochanterAPDistance,&PluginGait::setRightAsisTrochanterAPDistance>{"rightAsisTrochanterAPDistance"},
+      Property<PluginGait,double,&PluginGait::leftAsisTrochanterAPDistance,&PluginGait::setLeftAsisTrochanterAPDistance>{"leftAsisTrochanterAPDistance"},
+      Property<PluginGait,double,&PluginGait::rightKneeWidth,&PluginGait::setRightKneeWidth>{"rightKneeWidth"},
+      Property<PluginGait,double,&PluginGait::leftKneeWidth,&PluginGait::setLeftKneeWidth>{"leftKneeWidth"},
+      Property<PluginGait,double,&PluginGait::rightAnkleWidth,&PluginGait::setRightAnkleWidth>{"rightAnkleWidth"},
+      Property<PluginGait,double,&PluginGait::leftAnkleWidth,&PluginGait::setLeftAnkleWidth>{"leftAnkleWidth"},
+      Property<PluginGait,bool,&PluginGait::rightFootFlat,&PluginGait::setRightFootFlat>{"rightFootFlat"},
+      Property<PluginGait,bool,&PluginGait::leftFootFlat,&PluginGait::setRightFootFlat>{"leftFootFlat"},
+      Property<PluginGait,double,&PluginGait::rightStaticPlantarFlexionOffset>{"rightStaticPlantarFlexionOffset"},
+      Property<PluginGait,double,&PluginGait::rightStaticRotationOffset>{"rightStaticRotationOffset"},
+      Property<PluginGait,double,&PluginGait::leftStaticPlantarFlexionOffset>{"leftStaticPlantarFlexionOffset"},
+      Property<PluginGait,double,&PluginGait::leftStaticRotationOffset>{"leftStaticRotationOffset"}
     )
     
   public:
     PluginGaitPrivate(PluginGait* pint, const std::string& name, int region, int side);
-    ~PluginGaitPrivate() noexcept;
+    ~PluginGaitPrivate() _BTK_NOEXCEPT;
     
-    void computeHipJointCenter(double* HJC, double S, double C, double xdis) const noexcept;
-    bool calibrateLowerLimb(int side, const lard::Trajectory* HJC, std::unordered_map<std::string,lard::MappedTrajectory>* landmarks) noexcept;
-    bool generateUpperLimb(Model* model, Trial* trial, int side, const lard::Vector* u_torso, const lard::Vector* o_torso, std::unordered_map<std::string,lard::MappedTrajectory>* landmarks, double sampleRate, double startTime) const noexcept;
-    bool generateLowerLimb(Trial* trial, int side, const lard::Trajectory* HJC, std::unordered_map<std::string,lard::MappedTrajectory>* landmarks, double sampleRate, double startTime) const noexcept;
+    void computeHipJointCenter(double* HJC, double S, double C, double xdis) const _BTK_NOEXCEPT;
+    bool calibrateLowerLimb(int side, const lard::Trajectory* HJC, std::unordered_map<std::string,lard::MappedTrajectory>* landmarks) _BTK_NOEXCEPT;
+    bool generateUpperLimb(Model* model, Trial* trial, int side, const lard::Vector* u_torso, const lard::Vector* o_torso, std::unordered_map<std::string,lard::MappedTrajectory>* landmarks, double sampleRate, double startTime) const _BTK_NOEXCEPT;
+    bool generateLowerLimb(Trial* trial, int side, const lard::Trajectory* HJC, std::unordered_map<std::string,lard::MappedTrajectory>* landmarks, double sampleRate, double startTime) const _BTK_NOEXCEPT;
     
     virtual Node* makePint() const override;
     
@@ -127,7 +128,7 @@ namespace btk
     double LeftStaticRotationOffset;
   };
   
-  inline void PluginGaitPrivate::computeHipJointCenter(double* HJC, double S, double C, double xdis) const noexcept
+  inline void PluginGaitPrivate::computeHipJointCenter(double* HJC, double S, double C, double xdis) const _BTK_NOEXCEPT
   {
     //const double theta = 0.49567350756639; // 28.4 * M_PI / 180.0;
     //const double beta = 0.314159265358979; // 18.0 * M_PI / 180.0;
@@ -155,12 +156,12 @@ namespace internal
   template <>
   struct traits<ChordOpValues>
   {
-    using ReturnType = typename Eigen::Array<double,Eigen::Dynamic,3>;
+    using ReturnType = Eigen::Array<double,Eigen::Dynamic,3>;
   };
   
   struct ChordOpValues : public Eigen::ReturnByValue<ChordOpValues>
   {
-    using StorageType = typename traits<ChordOpValues>::ReturnType;
+    using StorageType = traits<ChordOpValues>::ReturnType;
     using Index = StorageType::Index;
     StorageType m_V;
   public:
@@ -186,11 +187,14 @@ namespace btk
       using Values = typename Array<3>::Values;
       using Residuals = typename Array<3>::Residuals;
       using Index = typename Values::Index;
-      enum : int
-      {
-        ColsAtCompileTime = 3,
-        Processing = Full
-      };
+      static _BTK_CONSTEXPR int ColsAtCompileTime = 3;
+      static _BTK_CONSTEXPR int Processing = Full;
+    };
+    
+    template <typename XprOne, typename XprTwo, typename XprThree>
+    struct Nested<ChordOp<XprOne, XprTwo, XprThree>>
+    {
+      using type = const ChordOp<XprOne, XprTwo, XprThree>; // Plain object
     };
   };
   
@@ -202,31 +206,31 @@ namespace btk
     
     using Index = typename lard::Traits<ChordOp<XprOne,XprTwo,XprThree>>::Index;
     
-    const XprOne& mr_Xpr1;
-    const XprTwo& mr_Xpr2;
-    const XprThree& mr_Xpr3;
+    const typename lard::Nested<XprOne>::type m_Xpr1;
+    const typename lard::Nested<XprTwo>::type m_Xpr2;
+    const typename lard::Nested<XprThree>::type m_Xpr3;
     double Offset;
     
   public:
     ChordOp(double offset, const lard::Base<XprOne>& x1, const lard::Base<XprTwo>& x2, const lard::Base<XprThree>& x3)
-    : mr_Xpr1(x1), mr_Xpr2(x2), mr_Xpr3(x3), Offset(offset)
+    : m_Xpr1(x1), m_Xpr2(x2), m_Xpr3(x3), Offset(offset)
     {
-      assert(this->mr_Xpr1.rows() == this->mr_Xpr2.rows());
-      assert(this->mr_Xpr2.rows() == this->mr_Xpr3.rows());
-      assert(this->mr_Xpr1.rows() > 0);
-      assert(this->mr_Xpr2.rows() > 0);
-      assert(this->mr_Xpr3.rows() > 0);
+      assert(this->m_Xpr1.rows() == this->m_Xpr2.rows());
+      assert(this->m_Xpr2.rows() == this->m_Xpr3.rows());
+      assert(this->m_Xpr1.rows() > 0);
+      assert(this->m_Xpr2.rows() > 0);
+      assert(this->m_Xpr3.rows() > 0);
     };
     
-    const ChordOp& derived() const noexcept {return *this;};
+    const ChordOp& derived() const _BTK_NOEXCEPT {return *this;};
     
-    Index rows() const noexcept {return this->mr_Xpr1.rows();};
+    Index rows() const _BTK_NOEXCEPT {return this->m_Xpr1.rows();};
     
-    const Eigen::internal::ChordOpValues values() const noexcept
+    const Eigen::internal::ChordOpValues values() const _BTK_NOEXCEPT
     {
-      const auto& I = this->mr_Xpr1;
-      const auto& J = this->mr_Xpr2;
-      const auto& K = this->mr_Xpr3;
+      const auto& I = this->m_Xpr1;
+      const auto& J = this->m_Xpr2;
+      const auto& K = this->m_Xpr3;
       // Construct the frame associated with I, J, K
       const lard::Vector v = (J - I).normalized();
       const lard::Vector u = v.cross(K - I).normalized();
@@ -245,9 +249,9 @@ namespace btk
       return Eigen::internal::ChordOpValues(local.transform(t).values());
     };
   
-    auto residuals() const noexcept -> decltype(ChordOp::generateResiduals((this->mr_Xpr1.derived().residuals() >= 0.0) && (this->mr_Xpr2.derived().residuals() >= 0.0) && (this->mr_Xpr3.derived().residuals() >= 0.0)))
+    auto residuals() const _BTK_NOEXCEPT -> decltype(ChordOp::generateResiduals((_BTK_LARD_DECLVAL_NESTED(XprOne).residuals() >= 0.0) && (_BTK_LARD_DECLVAL_NESTED(XprTwo).residuals() >= 0.0) && (_BTK_LARD_DECLVAL_NESTED(XprThree).residuals() >= 0.0)))
     {
-      return ChordOp::generateResiduals((this->mr_Xpr1.derived().residuals() >= 0.0) && (this->mr_Xpr2.derived().residuals() >= 0.0) && (this->mr_Xpr3.derived().residuals() >= 0.0));
+      return ChordOp::generateResiduals((this->m_Xpr1.residuals() >= 0.0) && (this->m_Xpr2.residuals() >= 0.0) && (this->m_Xpr3.residuals() >= 0.0));
     };
   };
   

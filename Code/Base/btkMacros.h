@@ -45,6 +45,30 @@
  * Macro to use when an input is not used in the function.
  * Usefull when the compiler gives you a warning to say that the variable is not used.
  */
-#define BTK_UNUSED(x) (void)x;
+#define _BTK_UNUSED(x) (void)x;
+
+/**
+ * MSVC 2013 does not support the C++11 keyword 'constexpr' but it will supported in MSVC 2015.
+ *
+ * [1] http://blogs.msdn.com/b/vcblog/archive/2015/04/29/c-11-14-17-features-in-vs-2015-rc.aspx
+ */
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  #define _BTK_CONSTEXPR const
+  #define _BTK_CONSTEXPR_CONST const 
+#else
+  #define _BTK_CONSTEXPR constexpr
+  #define _BTK_CONSTEXPR_CONST constexpr const
+#endif
+
+/**
+ * MSVC 2013 does not support the C++11 keyword 'noexcept' but it will supported in MSVC 2015.
+ *
+ * [1] http://blogs.msdn.com/b/vcblog/archive/2015/04/29/c-11-14-17-features-in-vs-2015-rc.aspx
+ */
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  #define _BTK_NOEXCEPT
+#else
+  #define _BTK_NOEXCEPT noexcept
+#endif
 
 #endif // __btkMacros_h

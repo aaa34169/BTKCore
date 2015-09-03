@@ -38,84 +38,90 @@
 
 #include "btkTrialExport.h"
 #include "btkNode.h"
+#include "btkMacros.h" // _BTK_CONSTEXPR, _BTK_NOEXCEPT
 
 #include <vector>
 #include <array>
 #include <numeric>
+#include <initializer_list>
 
 namespace btk
 {
   class TimeSequencePrivate;
   
-  class BTK_TRIAL_EXPORT TimeSequence : public Node
+  class BTK_NODE(BTK_TRIAL_EXPORT, TimeSequence) : public Node
   {
     BTK_DECLARE_PIMPL_ACCESSOR(TimeSequence)
   
   public:
     enum : int {Unknown = 0, Marker, Angle, Force, Moment, Power, Scalar, Analog, Pose};
-    static constexpr std::array<double,2> InfinityRange{{-std::numeric_limits<double>::infinity(),std::numeric_limits<double>::infinity()}};
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+    static _BTK_CONSTEXPR std::array<double,2> InfinityRange;
+#else
+    static _BTK_CONSTEXPR std::array<double,2> InfinityRange{{-std::numeric_limits<double>::infinity(),std::numeric_limits<double>::infinity()}};
+#endif
     
     TimeSequence(const std::string& name, unsigned components, unsigned samples, double rate, double start, int type, const std::string& unit, double scale, double offset, const std::array<double,2>& range, Node* parent = nullptr);
     TimeSequence(const std::string& name, unsigned components, unsigned samples, double rate, double start, int type, const std::string& unit, Node* parent = nullptr);
     TimeSequence(const std::string& name, const std::vector<unsigned>& dimensions, unsigned samples, double rate, double start, int type, const std::string& unit, double scale, double offset, const std::array<double,2>& range, Node* parent = nullptr);
     TimeSequence(const std::string& name, const std::vector<unsigned>& dimensions, unsigned samples, double rate, double start, int type, const std::string& unit, Node* parent = nullptr);
-    ~TimeSequence() noexcept;
+    ~TimeSequence() _BTK_NOEXCEPT;
     
     TimeSequence(const TimeSequence& ) = delete;
-    TimeSequence(TimeSequence&& ) noexcept = delete;
+    TimeSequence(TimeSequence&& ) _BTK_NOEXCEPT = delete;
     TimeSequence& operator=(const TimeSequence& ) = delete;
-    TimeSequence& operator=(TimeSequence&& ) noexcept = delete;
+    TimeSequence& operator=(TimeSequence&& ) _BTK_NOEXCEPT = delete;
     
-    double sampleRate() const noexcept;
-    void setSampleRate(double value) noexcept;
+    double sampleRate() const _BTK_NOEXCEPT;
+    void setSampleRate(double value) _BTK_NOEXCEPT;
     
-    const std::vector<unsigned>& dimensions() const noexcept;
-    unsigned samples() const noexcept;
-    unsigned components() const noexcept;
-    size_t elements() const noexcept;
+    const std::vector<unsigned>& dimensions() const _BTK_NOEXCEPT;
+    unsigned samples() const _BTK_NOEXCEPT;
+    unsigned components() const _BTK_NOEXCEPT;
+    size_t elements() const _BTK_NOEXCEPT;
     
-    double duration() const noexcept;
+    double duration() const _BTK_NOEXCEPT;
     
-    int type() const noexcept;
-    void setType(int value) noexcept;
+    int type() const _BTK_NOEXCEPT;
+    void setType(int value) _BTK_NOEXCEPT;
     
-    const std::string& unit() const noexcept;
-    void setUnit(const std::string& value) noexcept;
+    const std::string& unit() const _BTK_NOEXCEPT;
+    void setUnit(const std::string& value) _BTK_NOEXCEPT;
     
-    double startTime() const noexcept;
-    void setStartTime(double value) noexcept;
+    double startTime() const _BTK_NOEXCEPT;
+    void setStartTime(double value) _BTK_NOEXCEPT;
     
-    double scale() const noexcept;
-    void setScale(double value) noexcept;
+    double scale() const _BTK_NOEXCEPT;
+    void setScale(double value) _BTK_NOEXCEPT;
     
-    double offset() const noexcept;
-    void setOffset(double value) noexcept;
+    double offset() const _BTK_NOEXCEPT;
+    void setOffset(double value) _BTK_NOEXCEPT;
     
-    const std::array<double,2>& range() const noexcept;
-    void setRange(const std::array<double,2>& value) noexcept;
+    const std::array<double,2>& range() const _BTK_NOEXCEPT;
+    void setRange(const std::array<double,2>& value) _BTK_NOEXCEPT;
     
-    const double* data() const noexcept;
-    double* data() noexcept;
+    const double* data() const _BTK_NOEXCEPT;
+    double* data() _BTK_NOEXCEPT;
     
-    template <typename... Is> double data(unsigned sample, Is... indices) const noexcept;
-    template <typename... Is> double& data(unsigned sample, Is... indices) noexcept;
+    template <typename... Is> double data(unsigned sample, Is... indices) const _BTK_NOEXCEPT;
+    template <typename... Is> double& data(unsigned sample, Is... indices) _BTK_NOEXCEPT;
     
     void resize(unsigned samples);
   
   private:
-    double& data(unsigned sample, std::vector<unsigned>&& indices) noexcept;
+    double& data(unsigned sample, std::initializer_list<unsigned>&& indices) const _BTK_NOEXCEPT;
   };
   
   template <typename... Is>
-  inline double TimeSequence::data(unsigned sample, Is... indices) const noexcept
+  inline double TimeSequence::data(unsigned sample, Is... indices) const _BTK_NOEXCEPT
   {
-    return this->data(sample,{static_cast<unsigned>(indices)...});
+    return this->data(sample, {static_cast<unsigned>(indices)...});
   };
   
   template <typename... Is>
-  inline double& TimeSequence::data(unsigned sample, Is... indices) noexcept
+  inline double& TimeSequence::data(unsigned sample, Is... indices) _BTK_NOEXCEPT
   {
-    return this->data(sample,{static_cast<unsigned>(indices)...});
+    return this->data(sample, {static_cast<unsigned>(indices)...});
   };
 };
 

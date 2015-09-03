@@ -61,7 +61,7 @@ namespace btk
     }
     // Compute accumulated dimensions (used for the method data(sample, indices))
     this->AccumulatedDimensions.resize(dimensions.size()-1,dimensions[0]);
-    for (size_t i = this->AccumulatedDimensions.size() ; i > 0  ; --i)
+    for (int i = static_cast<int>(this->AccumulatedDimensions.size()-1) ; i > 0  ; --i)
       this->AccumulatedDimensions[i-1] = this->AccumulatedDimensions[i] * this->Dimensions[this->AccumulatedDimensions.size()-i];
   };
   
@@ -86,10 +86,15 @@ namespace btk
 
 namespace btk
 {
-  constexpr std::array<double,2> TimeSequence::InfinityRange;
-
+  
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  _BTK_CONSTEXPR std::array<double,2> TimeSequence::InfinityRange{{-std::numeric_limits<double>::infinity(),std::numeric_limits<double>::infinity()}};
+#else  
+  _BTK_CONSTEXPR std::array<double,2> TimeSequence::InfinityRange;
+#endif
+  
   TimeSequence::TimeSequence(const std::string& name, unsigned components, unsigned samples, double rate, double start, int type, const std::string& unit, double scale, double offset, const std::array<double,2>& range, Node* parent)
-  : TimeSequence(name,std::vector<unsigned>({components}),samples,rate,start,type,unit,scale,offset,range,parent)
+  : TimeSequence(name,std::vector<unsigned>(std::initializer_list<unsigned>{components}),samples,rate,start,type,unit,scale,offset,range,parent)
   {};
   
   TimeSequence::TimeSequence(const std::string& name, unsigned components, unsigned samples, double rate, double start, int type, const std::string& unit, Node* parent)
@@ -108,15 +113,15 @@ namespace btk
    * @fn TimeSequence::~TimeSequence()
    * Destructor (default)
    */
-  TimeSequence::~TimeSequence() noexcept = default;
+  TimeSequence::~TimeSequence() _BTK_NOEXCEPT = default;
   
-  double TimeSequence::sampleRate() const noexcept
+  double TimeSequence::sampleRate() const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     return optr->SampleRate;
   };
   
-  void TimeSequence::setSampleRate(double value)noexcept
+  void TimeSequence::setSampleRate(double value)_BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     if (std::fabs(value - optr->SampleRate) < std::numeric_limits<double>::epsilon())
@@ -125,30 +130,30 @@ namespace btk
     this->modified();
   };
 
-  const std::vector<unsigned>& TimeSequence::dimensions() const noexcept
+  const std::vector<unsigned>& TimeSequence::dimensions() const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     return optr->Dimensions;
   };
   
-  unsigned TimeSequence::samples() const noexcept
+  unsigned TimeSequence::samples() const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     return optr->Samples;
   };
 
-  unsigned TimeSequence::components() const noexcept
+  unsigned TimeSequence::components() const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     return std::accumulate(optr->Dimensions.cbegin(), optr->Dimensions.cend(), 1, [](unsigned x, unsigned y)->unsigned {return x*y;});
   };
       
-  size_t TimeSequence::elements() const noexcept
+  size_t TimeSequence::elements() const _BTK_NOEXCEPT
   {
     return static_cast<size_t>(this->samples()) * static_cast<size_t>(this->components());
   };
   
-  double TimeSequence::duration() const noexcept
+  double TimeSequence::duration() const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     if (optr->SampleRate <= 0.0)
@@ -156,13 +161,13 @@ namespace btk
     return static_cast<double>(optr->Samples) / optr->SampleRate;
   };
   
-  int TimeSequence::type() const noexcept
+  int TimeSequence::type() const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     return optr->Type;
   };
   
-  void TimeSequence::setType(int value) noexcept
+  void TimeSequence::setType(int value) _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     if (optr->Type == value)
@@ -171,13 +176,13 @@ namespace btk
     this->modified();
   };
   
-  const std::string& TimeSequence::unit() const noexcept
+  const std::string& TimeSequence::unit() const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     return optr->Unit;
   };
   
-  void TimeSequence::setUnit(const std::string& value) noexcept
+  void TimeSequence::setUnit(const std::string& value) _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     if (value == optr->Unit)
@@ -186,13 +191,13 @@ namespace btk
     this->modified();
   };
   
-  double TimeSequence::startTime() const noexcept
+  double TimeSequence::startTime() const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     return optr->StartTime;
   };
   
-  void TimeSequence::setStartTime(double value) noexcept
+  void TimeSequence::setStartTime(double value) _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     if (std::fabs(value - optr->StartTime) < std::numeric_limits<double>::epsilon())
@@ -201,13 +206,13 @@ namespace btk
     this->modified();
   };
   
-  double TimeSequence::scale() const noexcept
+  double TimeSequence::scale() const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     return optr->Scale;
   };
   
-  void TimeSequence::setScale(double value) noexcept
+  void TimeSequence::setScale(double value) _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     if (std::fabs(value - optr->Scale) < std::numeric_limits<double>::epsilon())
@@ -216,13 +221,13 @@ namespace btk
     this->modified();
   };
   
-  double TimeSequence::offset() const noexcept
+  double TimeSequence::offset() const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     return optr->Offset;
   };
   
-  void TimeSequence::setOffset(double value) noexcept
+  void TimeSequence::setOffset(double value) _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     if (std::fabs(value - optr->Offset) < std::numeric_limits<double>::epsilon())
@@ -231,13 +236,13 @@ namespace btk
     this->modified();
   };
   
-  const std::array<double,2>& TimeSequence::range() const noexcept
+  const std::array<double,2>& TimeSequence::range() const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     return optr->Range;
   };
   
-  void TimeSequence::setRange(const std::array<double,2>& value) noexcept
+  void TimeSequence::setRange(const std::array<double,2>& value) _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     if ((std::fabs(value[0] - optr->Range[0]) < std::numeric_limits<double>::epsilon())
@@ -247,7 +252,7 @@ namespace btk
     this->modified();
   };
   
-  const double* TimeSequence::data() const noexcept
+  const double* TimeSequence::data() const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     return optr->Data;
@@ -256,7 +261,7 @@ namespace btk
   /**
    * Have to call modified() manually
    */
-  double* TimeSequence::data() noexcept
+  double* TimeSequence::data() _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     return optr->Data;
@@ -275,18 +280,24 @@ namespace btk
   };
   
  /**
-  * @fn template <typename... Is> double& TimeSequence::data(unsigned sample, Is... indices) noexcept
+  * @fn template <typename... Is> double& TimeSequence::data(unsigned sample, Is... indices) _BTK_NOEXCEPT
   * Have to call modified() manually
   */
   
-  double& TimeSequence::data(unsigned sample, std::vector<unsigned>&& indices) noexcept
+  double& TimeSequence::data(unsigned sample, std::initializer_list<unsigned>&& indices) const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     assert(sample < optr->Samples);
     assert(indices.size() <= optr->Dimensions.size());
-    size_t col = indices.empty() ? 0 : indices.back();
-    for (size_t i = 0 ; i < std::min(indices.size(),optr->AccumulatedDimensions.size()) ; ++i)
-      col += optr->AccumulatedDimensions[i] * indices[i];
+    auto it = indices.begin();
+    std::advance(it,indices.size()-1);
+    size_t col = (indices.size() == 0) ? 0 : *it;
+    it = indices.begin();
+    for (size_t i = 0, len = std::min(indices.size(),optr->AccumulatedDimensions.size()) ; i < len ; ++i)
+    {
+      col += optr->AccumulatedDimensions[i] * *it;
+      ++it;
+    }
     return optr->Data[col*optr->Samples+sample];
   };
 };

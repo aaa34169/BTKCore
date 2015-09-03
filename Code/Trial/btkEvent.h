@@ -38,32 +38,33 @@
 
 #include "btkTrialExport.h"
 #include "btkNode.h"
+#include "btkMacros.h" // _BTK_NOEXCEPT
 
 namespace btk
 {
   class EventPrivate;
   
-  class BTK_TRIAL_EXPORT Event : public Node
+  class BTK_NODE(BTK_TRIAL_EXPORT, Event) : public Node
   {
     BTK_DECLARE_PIMPL_ACCESSOR(Event)
     
   public:
-    Event(const std::string& name, double time = 0.0, const std::string& context = {}, const std::string& subject = {}, Node* parent = nullptr);
-    ~Event() noexcept;
+    Event(const std::string& name, double time = 0.0, const std::string& context = std::string{}, const std::string& subject = std::string{}, Node* parent = nullptr);
+    ~Event() _BTK_NOEXCEPT;
     
     Event(const Node& ) = delete;
-    Event(Node&& ) noexcept = delete;
+    Event(Node&& ) _BTK_NOEXCEPT = delete;
     Event& operator=(const Event& ) = delete;
-    Event& operator=(Event&& ) noexcept = delete;
+    Event& operator=(Event&& ) _BTK_NOEXCEPT = delete;
     
-    double time() const noexcept;
-    void setTime(double value) noexcept;
+    double time() const _BTK_NOEXCEPT;
+    void setTime(double value) _BTK_NOEXCEPT;
     
-    const std::string& context() const noexcept;
-    void setContext(const std::string& value) noexcept;
+    const std::string& context() const _BTK_NOEXCEPT;
+    void setContext(const std::string& value) _BTK_NOEXCEPT;
     
-    const std::string& subject() const noexcept;
-    void setSubject(const std::string& value) noexcept;
+    const std::string& subject() const _BTK_NOEXCEPT;
+    void setSubject(const std::string& value) _BTK_NOEXCEPT;
   };
 };
 

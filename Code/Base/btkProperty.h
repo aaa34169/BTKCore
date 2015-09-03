@@ -38,6 +38,7 @@
 
 #include "btkAny.h"
 #include "btkLogger.h"
+#include "btkMacros.h" // _BTK_CONSTEXPR, _BTK_NOEXCEPT
 
 #include <type_traits>
 
@@ -46,106 +47,104 @@
   private: \
   _BTK_STATIC_PROPERTIES(__VA_ARGS__); \
   public: \
-  virtual bool staticProperty(const char* key, btk::Any* value) const noexcept override \
+  virtual bool staticProperty(const char* key, btk::Any* value) const _BTK_NOEXCEPT override \
   { \
     return (this->baseclass##Private::staticProperty(key,value) ? true : derivedclass##Private::StaticProperties::visit(this->pint(),key,value)); \
   }; \
-  virtual bool setStaticProperty(const char* key, const btk::Any* value) noexcept override \
+  virtual bool setStaticProperty(const char* key, const btk::Any* value) _BTK_NOEXCEPT override \
   { \
     return (this->baseclass##Private::setStaticProperty(key,value) ? true : derivedclass##Private::StaticProperties::visit(this->pint(),key,value)); \
   }; \
   private:
 
 #define _BTK_STATIC_PROPERTIES(...) \
-  struct StaticProperties : btk::Properties<StaticProperties> \
+  struct StaticProperties : btk::__details::_Properties<StaticProperties> \
   { \
-    static inline auto make_properties() -> decltype(std::make_tuple(__VA_ARGS__)) \
+    static inline auto make_properties() -> std::add_lvalue_reference<decltype(std::make_tuple(__VA_ARGS__))>::type \
     { \
-      return { __VA_ARGS__ }; \
+      static auto props = std::make_tuple(__VA_ARGS__); \
+      return props; \
     }; \
   };
 
 namespace btk
 { 
-  template <typename T, typename U>
+  template <typename T, typename U, U (T::*A)() const, void (T::*M)(U) = nullptr>
   struct Property
   {
+    using ValueType = typename std::decay<U>::type;
+    
     const char* Label;
-    std::size_t Size;
-    U (T::*Accessor)() const;
-    void (T::*Mutator)(U);
+    size_t Size;
 
-    template <std::size_t N, typename A = std::nullptr_t, typename M = std::nullptr_t>
-    constexpr Property(const char(&l)[N], A&& a = nullptr, M&& m = nullptr) : Label(l), Size(N-1), Accessor(a), Mutator(m)
+    template <size_t N>
+    _BTK_CONSTEXPR Property(const char(&l)[N])
+    : Label(l), Size(N-1)
+    {};
+    
+    U get(const T* obj) const _BTK_NOEXCEPT
     {
-      static_assert(!std::is_same<std::nullptr_t, A>::value, "An accessor is required. It is not possible to pass a null pointer.");
-    };
-
-    template <typename Object>
-    inline bool accept(Object* obj, const char* label, const Any* value) const
+      return (obj->*A)();
+    }
+    
+    void set(T* obj, U value) const _BTK_NOEXCEPT
     {
-      if (strcmp(label,this->Label) == 0)
-      {
-        if (this->Mutator != nullptr)
-          (obj->*(this->Mutator))(value->cast<typename std::decay<U>::type>());
-        else
-          Logger::error("No mutator method defined for the static property '%s'.",label);
-        return true;
-      }
-      return false;
-    };
-  
-    template <typename Object>
-    inline bool accept(const Object* obj, const char* label, Any* value) const
-    {
-      if (strcmp(label,this->Label) == 0)
-      {
-        *value = (obj->*(this->Accessor))();  
-        return true;
-      }
-      return false;
-    };
+      if (M == nullptr)
+        Logger::error("No mutator method defined for the static property '%s'.",this->Label);
+      else
+        (obj->*M)(value);
+    }
   };
   
-  template <typename Derived>
-  struct Properties
-  {
-    template <typename Object, typename Value>
-    static inline bool visit(Object* obj, const char* key, Value* val)
+  namespace __details
+  {   
+    template <typename Derived>
+    struct _Properties
     {
-      const auto properties = Derived::make_properties();
-      return details<decltype(properties),0>::execute(properties,obj,key,val);
-    };
-  
-  private:
-    template <typename Prop, typename Object, typename Value>
-    static inline bool accept(Prop&& property, Object* obj, const char* key, Value* val)
-    {
-      return property.accept(obj,key,val);
-    };
-  
-    template<typename Tuple, size_t Pos, size_t Size = std::tuple_size<Tuple>::value-1>
-    struct details
-    {
-      template <typename Props, typename Object, typename Value>
-      static inline bool execute(Props&& properties, Object* obj, const char* key, Value* val)
+      template <typename Object, typename Value>
+      static inline bool visit(Object* obj, const char* key, Value* val)
       {
-        auto property = std::get<Pos>(properties);
-        if (Derived::accept(std::forward<decltype(property)>(property),obj,key,val))
-          return true;
-        else
-          return details<Tuple,Pos+1,Size>::execute(std::forward<Props>(properties),obj,key,val);
+        const auto& properties = Derived::make_properties();
+        return search<0,std::tuple_size<typename std::decay<decltype(properties)>::type>::value-1>(properties,obj,key,val);
       };
-    };
   
-    template<typename Tuple, size_t Size>
-    struct details<Tuple, Size, Size>
-    {
-      template <typename Props, typename Object, typename Value>
-      static inline bool execute(Props&& properties, Object* obj, const char* key, Value* val)
+    private:
+      
+      template <typename Prop, typename Object, typename Value>
+      static inline bool accept(Prop&& prop, Object* obj, const char* key, Value* val)
       {
-        auto property = std::get<Size>(properties);
-        return Derived::accept(std::forward<decltype(property)>(property),obj,key,val);
+        if (strncmp(key,prop.Label,prop.Size) == 0)
+        {
+          val->assign(prop.get(obj));
+          return true;
+        }
+        return false;
+      }
+      
+      template <typename Prop, typename Object, typename Value>
+      static inline bool accept(Prop&& prop, Object* obj, const char* key, const Value* val)
+      {
+        if (strncmp(key,prop.Label,prop.Size) == 0)
+        {
+          using value_t = typename std::remove_const<typename std::remove_reference<Prop>::type>::type::ValueType;
+          prop.set(obj,val->template cast<value_t>());
+          return true;
+        }
+        return false;
+      }
+      
+      template <size_t Index, size_t Size, typename Props, typename Object, typename Value>
+      static inline typename std::enable_if<Index != Size, bool>::type search(Props&& properties, Object* obj, const char* key, Value* val)
+      {
+        if (accept(std::get<Index>(properties),obj,key,val))
+          return true;
+        return search<Index+1,Size>(std::forward<Props>(properties),obj,key,val);
+      };
+      
+      template <size_t Index, size_t Size, typename Props, typename Object, typename Value>
+      static inline typename std::enable_if<Index == Size, bool>::type search(Props&& properties, Object* obj, const char* key, Value* val)
+      {
+        return accept(std::get<Size>(properties),obj,key,val);
       };
     };
   };
@@ -191,7 +190,7 @@ namespace btk
    *   BTK_DECLARE_PINT_ACCESSOR(TestNode) // To have access to the public interface (pint) from the private implementation
    *   
    *   BTK_DECLARE_STATIC_PROPERTIES(TestNodePrivate, btk::NodePrivate,
-   *     btk::Property<TestNode,int>("version",&TestNode::version,&TestNode::setVersion)
+   *     btk::Property<TestNode,int,&TestNode::version,&TestNode::setVersion>("version")
    *   )
    *   
    * public:
@@ -204,7 +203,7 @@ namespace btk
    * If the member is read-only the pointer to the mutation must be set to nullptr. For example:
    *
    * @code
-   * btk::Property<TestNode,int>("version",&TestNode::version,nullptr)
+   * btk::Property<TestNode,int,&TestNode::version>("version") // by default the mutator is set to nullptr
    * @endcode
    */
   

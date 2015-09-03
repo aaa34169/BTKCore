@@ -1,21 +1,24 @@
 SET(BTKIO_SRCS
   btkIODevice.cpp
   btkBinaryStream.cpp
+  btkBuffer.cpp
   btkFile.cpp
   btkIOHandler.cpp
   # Trial formats
   TrialFormats/btkTrialIOHandler.cpp
   TrialFormats/btkC3DHandler.cpp
+  # TrialFormats/btkQTMHandler.cpp
 )
 
 ADD_LIBRARY(IO ${BTK_LIBS_BUILD_TYPE} ${BTKIO_SRCS})
-TARGET_LINK_LIBRARIES(IO Trial)
+TARGET_LINK_LIBRARIES(IO Trial lzo)
 TARGET_INCLUDE_DIRECTORIES(IO PUBLIC
   $<BUILD_INTERFACE:${BTK_BINARY_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/TrialFormats>
   $<BUILD_INTERFACE:${BTK_SOURCE_DIR}/ThirdParties/eigen3>
   $<INSTALL_INTERFACE:include/btk>
   $<INSTALL_INTERFACE:include/btk/3rdparty/eigen3>
+  $<INSTALL_INTERFACE:include/btk/3rdparty/>
 )
 GENERATE_EXPORT_HEADER(IO
                        BASE_NAME BTK_IO

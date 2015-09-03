@@ -6,24 +6,24 @@
 #include <btkSegment.h>
 #include <btkJoint.h>
 
-#include <btkMacros.h> // BTK_UNUSED
+#include <btkMacros.h> // BTK_UNUSED, _BTK_NOEXCEPT
 
 class TestRig : public btk::Rig
 {
 public:
   TestRig(btk::Node* parent = nullptr);
   
-  virtual bool setup(btk::Model* model) const noexcept override;
-  virtual bool calibrate(btk::Model* model, btk::Node* trials) noexcept override;
-  virtual bool generate(btk::Model* model, btk::Node* trials) const noexcept override;
-  virtual void finalize(btk::Node* trials) const noexcept override;
+  virtual bool setup(btk::Model* model) const _BTK_NOEXCEPT override;
+  virtual bool calibrate(btk::Model* model, btk::Node* trials) _BTK_NOEXCEPT override;
+  virtual bool generate(btk::Model* model, btk::Node* trials) const _BTK_NOEXCEPT override;
+  virtual void finalize(btk::Node* trials) const _BTK_NOEXCEPT override;
 };
 
 TestRig::TestRig(btk::Node* parent)
 : btk::Rig("TestRig",0,0, parent)
 {};
 
-bool TestRig::setup(btk::Model* model) const noexcept
+bool TestRig::setup(btk::Model* model) const _BTK_NOEXCEPT
 {
   btk::Segment* segA = new btk::Segment("SegA",0,0,model->segments());
   btk::Segment* segB = new btk::Segment("SegB",0,0,model->segments());
@@ -31,10 +31,10 @@ bool TestRig::setup(btk::Model* model) const noexcept
   return true;
 };
 
-bool TestRig::calibrate(btk::Model* model, Node* trials) noexcept
+bool TestRig::calibrate(btk::Model* model, Node* trials) _BTK_NOEXCEPT
 {
-  BTK_UNUSED(model)
-  BTK_UNUSED(trials)
+  _BTK_UNUSED(model)
+  _BTK_UNUSED(trials)
   // auto segA = model->segments()->findChild<btk::Segment*>("SegA");
   // auto segB = model->segments()->findChild<btk::Segment*>("SegB");
   // btk::Trial* trial = trials->findChild<btk::Trial*>();
@@ -53,10 +53,10 @@ bool TestRig::calibrate(btk::Model* model, Node* trials) noexcept
   return true;
 };
 
-bool TestRig::generate(btk::Model* model, Node* trials) const noexcept
+bool TestRig::generate(btk::Model* model, Node* trials) const _BTK_NOEXCEPT
 {
-  BTK_UNUSED(model)
-  BTK_UNUSED(trials)
+  _BTK_UNUSED(model)
+  _BTK_UNUSED(trials)
   // auto trial = trials->findChild<btk::Trial*>();
   // auto TT = btk::lard::to_mapped_trajectory(trial,"TT");
   // auto LM = btk::lard::to_mapped_trajectory(trial,"LM");
@@ -74,9 +74,9 @@ bool TestRig::generate(btk::Model* model, Node* trials) const noexcept
   return true;
 };
 
-void TestRig::finalize(btk::Node* trials) const noexcept
+void TestRig::finalize(btk::Node* trials) const _BTK_NOEXCEPT
 {
-  BTK_UNUSED(trials)
+  _BTK_UNUSED(trials)
 };
 
 #endif // RigTest_classdef_h

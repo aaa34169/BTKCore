@@ -78,19 +78,21 @@ namespace btk
   Joint::Joint(const std::string& name, Segment* proximal, Segment* distal, Node* parent)
   : Node(*new JointPrivate(this,name,proximal,distal), parent)
   {
-    this->appendChild(proximal);
-    this->appendChild(distal);
+    if (proximal != nullptr)
+      proximal->appendParent(this);
+    if (distal != nullptr)
+      distal->appendParent(this);
   };
   
-  Joint::~Joint() noexcept = default;
+  Joint::~Joint() _BTK_NOEXCEPT = default;
   
-  Segment* Joint::proximalSegment() const noexcept
+  Segment* Joint::proximalSegment() const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     return optr->Proximal;
   };
   
-  void Joint::setProximalSegment(Segment* value) noexcept
+  void Joint::setProximalSegment(Segment* value) _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     if (optr->Proximal != value)
@@ -101,13 +103,13 @@ namespace btk
     }
   };
   
-  Segment* Joint::distalSegment() const noexcept
+  Segment* Joint::distalSegment() const _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     return optr->Distal;
   };
   
-  void Joint::setDistalSegment(Segment* value) noexcept
+  void Joint::setDistalSegment(Segment* value) _BTK_NOEXCEPT
   {
     auto optr = this->pimpl();
     if (optr->Distal != value)

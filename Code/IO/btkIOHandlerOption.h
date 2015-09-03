@@ -33,172 +33,88 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __btkOption_h
-#define __btkOption_h
+#ifndef __btkIOHandlerOption_h
+#define __btkIOHandlerOption_h
 
 #include "btkLogger.h"
+#include "btkMacros.h" // _BTK_CONSTEXPR, _BTK_NOEXCEPT
 
 #include <vector>
 #include <tuple>
 #include <array>
 
-// Note: This is a large macro but all the code is inlined.
 #define BTK_DECLARE_IOHANDLER_OPTIONS(...) \
   public: \
-    class _Options \
+    virtual std::vector<const char*> availableOptions() const _BTK_NOEXCEPT override \
     { \
-      static inline auto make_options() -> decltype(std::make_tuple(__VA_ARGS__)) \
-      { \
-        return { __VA_ARGS__ }; \
-      } \
-    public: \
-      using _Tuple = decltype(_Options::make_options()); \
-      _Tuple Tuple; \
-      _Options() : Tuple(_Options::make_options()) {}; \
-      ~_Options() = default; \
-      _Options(const _Options& ) = delete; \
-      _Options(_Options&& ) noexcept = delete; \
-      _Options& operator=(const _Options& ) = delete; \
-      _Options& operator=(const _Options&& ) noexcept = delete; \
-      template<class T, size_t I, size_t N> \
-      struct iterate \
-      { \
-        static inline void extract_name(std::vector<const char*>* output) \
-        { \
-          output->operator[](I) = std::tuple_element<I,T>::type::name(); \
-          iterate<T,I+1,N>::extract_name(output); \
-        }; \
-        static inline std::vector<const char*> extract_choices(const char* option) \
-        { \
-          using _Elt = typename std::tuple_element<I,T>::type; \
-          if (strcmp(_Elt::name(),option) == 0) \
-            return _Elt::choices(); \
-          else \
-            return iterate<T,I+1,N>::extract_choices(option); \
-        }; \
-        static inline void get_value(const T* tuple, const char* option, void* value) \
-        { \
-          using _Elt = typename std::tuple_element<I,T>::type; \
-          if (strcmp(_Elt::name(),option) == 0) \
-            *static_cast<typename _Elt::Format*>(value) = std::get<I>(*tuple).value(); \
-          else \
-            return iterate<T,I+1,N>::get_value(tuple, option, value); \
-        }; \
-        static inline void set_value(T* tuple, const char* option, const void* value) \
-        { \
-          using _Elt = typename std::tuple_element<I,T>::type; \
-          if (strcmp(_Elt::name(),option) == 0) \
-            std::get<I>(*tuple).setValue(*static_cast<const typename _Elt::Format*>(value)); \
-          else \
-            return iterate<T,I+1,N>::set_value(tuple, option, value); \
-        }; \
-      }; \
-      template<class T, size_t N> \
-      struct iterate<T,N,N> \
-      { \
-        static inline void extract_name(std::vector<const char*>* ) {}; \
-        static inline std::vector<const char*> extract_choices(const char* ) {return std::vector<const char*>();}; \
-        static inline void get_value(const T* , const char* , void* ) {}; \
-        static inline void set_value(T* , const char* , const void* ) {}; \
-      }; \
-    }; \
-    virtual std::vector<const char*> availableOptions() const noexcept override \
-    { \
-      using _TupleSize = std::tuple_size<_Options::_Tuple>; \
+      using _TupleSize = std::tuple_size<_Tuple>; \
       std::vector<const char*> options(_TupleSize::value); \
-      _Options::iterate<_Options::_Tuple,0,_TupleSize::value>::extract_name(&options); \
+      __details::_IOHandler_options_iterate<_Tuple,0,_TupleSize::value>::extract_name(&options); \
       return options; \
     }; \
-    virtual std::vector<const char*> availableOptionChoices(const char* option) const noexcept override \
+    virtual std::vector<const char*> availableOptionChoices(const char* option) const _BTK_NOEXCEPT override \
     { \
-      using _TupleSize = std::tuple_size<_Options::_Tuple>; \
-      return _Options::iterate<_Options::_Tuple,0,_TupleSize::value>::extract_choices(option); \
+      using _TupleSize = std::tuple_size<_Tuple>; \
+      return __details::_IOHandler_options_iterate<_Tuple,0,_TupleSize::value>::extract_choices(option); \
     }; \
-    virtual void option(const char* option, void* value) const noexcept override \
+    virtual void option(const char* option, void* value) const _BTK_NOEXCEPT override \
     { \
-      using _TupleSize = std::tuple_size<_Options::_Tuple>; \
-      return _Options::iterate<_Options::_Tuple,0,_TupleSize::value>::get_value(&(this->Options.Tuple),option,value); \
+      using _TupleSize = std::tuple_size<_Tuple>; \
+      __details::_IOHandler_options_iterate<_Tuple,0,_TupleSize::value>::get_value(&(this->m_Options),option,value); \
     }; \
-    virtual void setOption(const char* option, const void* value) noexcept override \
+    virtual void setOption(const char* option, const void* value) _BTK_NOEXCEPT override \
     { \
-      using _TupleSize = std::tuple_size<_Options::_Tuple>; \
-      return _Options::iterate<_Options::_Tuple,0,_TupleSize::value>::set_value(&(this->Options.Tuple),option,value); \
+      using _TupleSize = std::tuple_size<_Tuple>; \
+      __details::_IOHandler_options_iterate<_Tuple,0,_TupleSize::value>::set_value(&(this->m_Options),option,value); \
     }; \
-    _Options Options; \
-  private:
+  private: \
+    using _Tuple = decltype(std::make_tuple(__VA_ARGS__)); \
+    struct _Options : _Tuple \
+    { \
+      _Options() : _Tuple(__VA_ARGS__) {}; \
+    } m_Options;
+    
+#define BTK_STRINGIFY_OPTION_NAME(option,str) \
+    template <> \
+    struct stringify_option_name<typename option::ValueType> \
+    { \
+      static inline _BTK_CONSTEXPR_CONST char* c_str() _BTK_NOEXCEPT {return str;}; \
+    };
+    
+#define BTK_STRINGIFY_OPTION_VALUE(option,value,str) \
+    template <> \
+    struct stringify_option_value<typename option::ValueType,value> \
+    { \
+      static inline _BTK_CONSTEXPR_CONST char* c_str() _BTK_NOEXCEPT {return str;}; \
+    };
+    
+// ------------------------------------------------------------------------- //
 
 namespace btk
 {
+  template <typename V> struct stringify_option_name;
   template <typename V, V v> struct stringify_option_value;
   
-  template <typename O>
-  struct make_option
+  namespace __details
   {
-    using V = typename O::Format;
-    template <V... vs> using D = typename O::template Details<vs...>;
-    
-    template <V... vs>
-    struct multiple_choices
-    {
-      static inline D<vs...> init(V&& value)
-      {
-        return D<vs...>(std::forward<V>(value));
-      };
-      multiple_choices() = delete;
-      ~multiple_choices() noexcept = delete;
-      multiple_choices(const multiple_choices& ) = delete;
-      multiple_choices(multiple_choices&& ) noexcept = delete;
-      multiple_choices& operator=(const multiple_choices& ) = delete;
-      multiple_choices& operator=(multiple_choices&& ) noexcept = delete;
-    };
-    template <V v>
-    static inline D<v> single_choice()
-    {
-      return D<v>(std::forward<V>(v));
-    };
-  };
-  
-  template <const char* S, typename V>
-  class Option
-  {
-  public:
-    using Format = V;
-    
-    static inline constexpr const char* name() noexcept {return S;};
-    
-    Option() = delete;
-    ~Option() noexcept = delete;
-    Option(const Option& ) = delete;
-    Option(Option&& ) noexcept = delete;
-    Option& operator=(const Option& ) = delete;
-    Option& operator=(Option&& ) noexcept = delete;
-    
-    template <V... vs>
-    class Details
+    template <typename V, V... vs>
+    class _IOHandler_option
     {
     public:
-      using Format = V;
-
-      static inline constexpr const char* name() noexcept {return S;};
-      static inline std::vector<const char*> choices() noexcept {return {stringify_option_value<V,vs>::c_str...};};
+      using ValueType = V;
+      
+      static inline _BTK_CONSTEXPR_CONST char* name() _BTK_NOEXCEPT {return stringify_option_name<V>::c_str();};
+      static inline std::vector<const char*> choices() _BTK_NOEXCEPT {return {stringify_option_value<V,vs>::c_str()...};};
     
-      Details(V&& v)
+      _IOHandler_option(V&& v)
       : Value(std::forward<V>(v))
       {};
       
-      ~Details() noexcept = default;
-      Details(Details&& ) = default;
-      
-      Details() = delete;
-      Details(const Details& ) = delete;
-      Details& operator=(const Details& ) = delete;
-      Details& operator=(Details&& ) noexcept = delete;
-      
-      inline const V& value() const noexcept {return this->Value;};
-      inline void setValue(const V& value) noexcept
+      inline const V& value() const _BTK_NOEXCEPT {return this->Value;};
+      inline void setValue(const V& value) _BTK_NOEXCEPT
       {
-        constexpr size_t num = sizeof...(vs);
-        constexpr std::array<V,num> choices{{vs...}};
+        _BTK_CONSTEXPR size_t num = sizeof...(vs);
+        _BTK_CONSTEXPR std::array<V,num> choices{{vs...}};
         for (size_t i = 0 ; i < num ; ++i)
         {
           if (choices[i] == value)
@@ -213,6 +129,96 @@ namespace btk
     private:
       V Value;
     };
+    
+    template<class T, size_t I, size_t N>
+    struct _IOHandler_options_iterate
+    {
+      static inline void extract_name(std::vector<const char*>* output)
+      {
+        output->operator[](I) = std::tuple_element<I,T>::type::name();
+        _IOHandler_options_iterate<T,I+1,N>::extract_name(output);
+      };
+      
+      static inline std::vector<const char*> extract_choices(const char* option)
+      {
+        using _Elt = typename std::tuple_element<I,T>::type;
+        if (strcmp(_Elt::name(),option) == 0)
+          return _Elt::choices();
+        else
+          return _IOHandler_options_iterate<T,I+1,N>::extract_choices(option);
+      };
+      
+      static inline void get_value(const T* tuple, const char* option, void* value)
+      {
+        using _Elt = typename std::tuple_element<I,T>::type;
+        if (strcmp(_Elt::name(),option) == 0)
+          *static_cast<typename _Elt::ValueType*>(value) = std::get<I>(*tuple).value();
+        else
+          _IOHandler_options_iterate<T,I+1,N>::get_value(tuple, option, value);
+      };
+      
+      static inline void set_value(T* tuple, const char* option, const void* value)
+      {
+        using _Elt = typename std::tuple_element<I,T>::type;
+        if (strcmp(_Elt::name(),option) == 0)
+          std::get<I>(*tuple).setValue(*static_cast<const typename _Elt::ValueType*>(value));
+        else
+          _IOHandler_options_iterate<T,I+1,N>::set_value(tuple, option, value);
+      };
+    };
+    
+    template<class T, size_t N>
+    struct _IOHandler_options_iterate<T,N,N>
+    {
+      static inline void extract_name(std::vector<const char*>* ) {};
+      static inline std::vector<const char*> extract_choices(const char* ) {return std::vector<const char*>();};
+      static inline void get_value(const T* , const char* , void* ) {};
+      static inline void set_value(T* , const char* , const void* ) {};
+    };
+  };
+    
+  // --------------------------------------------------------------------- //
+  
+  template <typename O>
+  struct make_option
+  {
+    using V = typename O::ValueType;
+  
+    template <V... vs>
+    struct multiple_choices
+    {
+      static inline __details::_IOHandler_option<V,vs...> initial_value(V&& value)
+      {
+        return __details::_IOHandler_option<V,vs...>(std::forward<V>(value));
+      };
+      multiple_choices() = delete;
+      ~multiple_choices() _BTK_NOEXCEPT = delete;
+      multiple_choices(const multiple_choices& ) = delete;
+      multiple_choices(multiple_choices&& ) _BTK_NOEXCEPT = delete;
+      multiple_choices& operator=(const multiple_choices& ) = delete;
+      multiple_choices& operator=(multiple_choices&& ) _BTK_NOEXCEPT = delete;
+    };
+    template <V v>
+    static inline __details::_IOHandler_option<V,v> single_choice()
+    {
+      return __details::_IOHandler_option<V,v>(std::forward<V>(v));
+    };
+  };
+
+  template <typename V>
+  class IOHandlerOption
+  {
+  public:
+    using ValueType = V;
+  
+    static inline _BTK_CONSTEXPR_CONST char* name() _BTK_NOEXCEPT {return stringify_option_name<V>::c_str();};
+  
+    IOHandlerOption() = delete;
+    ~IOHandlerOption() _BTK_NOEXCEPT = delete;
+    IOHandlerOption(const IOHandlerOption& ) = delete;
+    IOHandlerOption(IOHandlerOption&& ) _BTK_NOEXCEPT = delete;
+    IOHandlerOption& operator=(const IOHandlerOption& ) = delete;
+    IOHandlerOption& operator=(IOHandlerOption&& ) _BTK_NOEXCEPT = delete;
   };
   
   /**

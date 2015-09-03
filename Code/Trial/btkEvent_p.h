@@ -43,6 +43,7 @@
 
 #include "btkNode_p.h"
 #include "btkProperty.h"
+#include "btkMacros.h" // _BTK_NOEXCEPT
 
 namespace btk
 {
@@ -54,14 +55,14 @@ namespace btk
   
     BTK_DECLARE_NODEID(Event, Node)
     BTK_DECLARE_STATIC_PROPERTIES(Event, Node,
-      Property<Event,double>("time",&Event::time,&Event::setTime),
-      Property<Event,const std::string&>("context",&Event::context,&Event::setContext),
-      Property<Event,const std::string&>("subject",&Event::subject,&Event::setSubject)
+      Property<Event,double,&Event::time,&Event::setTime>{"time"},
+      Property<Event,const std::string&,&Event::context,&Event::setContext>{"context"},
+      Property<Event,const std::string&,&Event::subject,&Event::setSubject>{"subject"}
     )
   
   public:
     EventPrivate(Event* pint, const std::string& name, double time, const std::string& context, const std::string& subject);
-    ~EventPrivate() noexcept;
+    ~EventPrivate() _BTK_NOEXCEPT;
     
     virtual Node* makePint() const override;
     

@@ -37,14 +37,6 @@
 
 namespace btk
 {
-  // Known conversion table defined at compile time.
-  
-  Any::Converter::Converter()
-  : Table{}
-  {};
-  
-  // ----------------------------------------------------------------------- //
-  
   /**
    * @class Any btkAny.h
    * @brief Generic type to store and convert C++'s normal strict and static type.
@@ -170,7 +162,7 @@ namespace btk
    * Default constructor.
    * This kind of Any object is defined as null (method Any::isValid() returns true).
    */
-  Any::Any() noexcept
+  Any::Any() _BTK_NOEXCEPT
   : mp_Storage(nullptr)
   {};
 
@@ -186,15 +178,17 @@ namespace btk
    * Move constructor
    * The content of @c other is moved to this object. The content of @c other is then defined as null (method Any::isValid() returns true).
    */
-  Any::Any(Any&& other) noexcept
+  Any::Any(Any&& other) _BTK_NOEXCEPT
   : mp_Storage(std::move(other.mp_Storage))
-  {};
+  {
+    other.mp_Storage = nullptr;
+  };
 
   /**
    * @fn template <typename U> Any::Any(const U& value);
    * Constructor which store the given @a value.
    *
-   * You can store any kind of type. But the conversion between types is only avaible if the stored type correspoinds to an arithmetic type, or a std::string, or if you register some custom conversion .
+   * You can store any kind of type. But the conversion between types is only available if the stored type correspoinds to an arithmetic type, or a std::string, or if you register some custom conversion.
    */
 
   /**
@@ -206,34 +200,53 @@ namespace btk
     delete this->mp_Storage;
   };
   
-  std::vector<size_t> Any::dimensions() const noexcept
+  std::vector<size_t> Any::dimensions() const _BTK_NOEXCEPT
   {
     return this->mp_Storage->dimensions();
   };
 
-  size_t Any::size() const noexcept
+  size_t Any::size() const _BTK_NOEXCEPT
   {
     return this->mp_Storage->size();
   };
   
   /**
-   * Return true if the object as no content, otherwise true.
+   * Return true if the object has a content, otherwise false.
    */
-  bool Any::isValid() const noexcept
+  bool Any::isValid() const _BTK_NOEXCEPT
   {
     return (this->mp_Storage != nullptr);
+  };
+  
+  /**
+   * Return true if the object as a non-empty content, otherwise false.
+   * In case the object is not valid, this method returns false too.
+   */
+  bool Any::isEmpty() const _BTK_NOEXCEPT
+  {
+    return (!this->isValid() || this->mp_Storage->size() <= 0) ? true : false;
   };
  
   /**
    * Swap the content of two Any object.
    */
-  void Any::swap(Any& other) noexcept
+  void Any::swap(Any& other) _BTK_NOEXCEPT
   {
     std::swap(this->mp_Storage, other.mp_Storage);
   };
   
+  /**
+   * template <typename U, typename> inline bool Any::isEqual(U&& value) const _BTK_NOEXCEPT
+   * Convenient method to compare the content of an Any object with the given value.
+   */
+  
+  /**
+   * template <typename U, typename> inline bool Any::assign(U&& value) const _BTK_NOEXCEPT
+   * Convenient method to assign a value to an Any object.
+   */
+  
   /** 
-   * @fn template <typename U, typename> U Any::cast() const noexcept
+   * @fn template <typename U, typename> U Any::cast() const _BTK_NOEXCEPT
    * Method to explicitely convert the content of this object to the given type.
    *
    * @code
@@ -245,7 +258,7 @@ namespace btk
    */
   
   /**
-   * @fn template<class U> Any::operator U() const noexcept
+   * @fn template<class U> Any::operator U() const _BTK_NOEXCEPT
    * Type conversion operator. Internally this operator uses the Any::cast() method.
    */
 
@@ -267,7 +280,7 @@ namespace btk
    * Move assignement operator.
    * In case the assigned object is not this one, the previous content is deleted and replaced by the content of the @c other object. The @c other object is then defined as null (method Any::isValid() returns true).
    */
-  Any& Any::operator=(Any&& other) noexcept
+  Any& Any::operator=(Any&& other) _BTK_NOEXCEPT
   {
     if (this != &other)
     {
@@ -281,7 +294,7 @@ namespace btk
   /**
    * Equal operator. Compare the content of two Any objects.
    */
-  bool operator==(const Any& lhs, const Any& rhs) noexcept
+  bool operator==(const Any& lhs, const Any& rhs) _BTK_NOEXCEPT
   {
     return ((lhs.mp_Storage != nullptr) && (rhs.mp_Storage != nullptr) && lhs.mp_Storage->compare(rhs.mp_Storage));
   };
@@ -289,7 +302,7 @@ namespace btk
  /**
   * Inequal operator. Returns the opposite of equal operator.
   */
-  bool operator!=(const Any& lhs, const Any& rhs) noexcept
+  bool operator!=(const Any& lhs, const Any& rhs) _BTK_NOEXCEPT
   {
     return !(lhs == rhs);
   };
@@ -316,33 +329,36 @@ namespace btk
 
   // ----------------------------------------------------------------------- //
 
-  /**
-   * Returns the conversion table used for all the Any object.
-   *
-   * @note The returned object is a singleton as proposed by Scott Meyers in C++11.
-   */
-  Any::Converter& Any::details::converter() noexcept
+  namespace __details
   {
-    static Converter helper;
-    return helper;
-  };
+    /**
+     * Returns the conversion table used for all the Any object.
+     *
+     * @note The returned object is a singleton as proposed by Scott Meyers in C++11.
+     */
+    _Any_converter_map& _any_converter_map() _BTK_NOEXCEPT
+    {
+      static _Any_converter_map table;
+      return table;
+    };
   
-  /**
-   * Extract the convertion function pointer based on the ID used from the type source (@c sid) and the returned type (@c rid)
-   * In case no function pointer was found, the returned value is set to nullptr.
-   */
-  Any::details::convert_t Any::details::extract_converter(typeid_t sid, typeid_t rid) noexcept
-  {
-    auto it = converter().Table.find(hash(static_cast<size_t>(sid),static_cast<size_t>(rid)));
-    return (it != converter().Table.end()) ? it->second : nullptr;
+    /**
+     * Extract the convertion function pointer based on the ID used from the type source (@c sid) and the returned type (@c rid)
+     * In case no function pointer was found, the returned value is set to nullptr.
+     */
+    _Any_convert_t _any_extract_converter(typeid_t sid, typeid_t rid) _BTK_NOEXCEPT
+    {
+      auto it = _any_converter_map().find(_any_hash(static_cast<size_t>(sid),static_cast<size_t>(rid)));
+      return (it != _any_converter_map().end()) ? it->second : nullptr;
+    };
   };
   
   // ----------------------------------------------------------------------- //
   
   /**
-   * @struct Any::Converter btkAny.h
+   * @struct Any::Conversion btkAny.h
    * @brief Utilitary to define conversion from/to a Any object.
-   * The role of this class is to facilitate the registration a type using Any::Register. 
+   * The role of this class is to facilitate the registration of a type using Any::Register. 
    */
   
   /**

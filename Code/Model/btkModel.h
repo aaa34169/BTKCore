@@ -38,6 +38,7 @@
 
 #include "btkModelExport.h"
 #include "btkNode.h"
+#include "btkMacros.h" // _BTK_NOEXCEPT
 
 namespace btk
 {
@@ -46,29 +47,29 @@ namespace btk
   
   class ModelPrivate;
   
-  class BTK_MODEL_EXPORT Model : public Node
+  class BTK_NODE(BTK_MODEL_EXPORT, Model) : public Node
   {
     BTK_DECLARE_PIMPL_ACCESSOR(Model)
     
   public:
     Model(const std::string& name, Rig* rig = nullptr, Node* parent = nullptr);
-    ~Model() noexcept;
+    ~Model() _BTK_NOEXCEPT;
     
     Model(const Model& ) = delete;
-    Model(Model&& ) noexcept = delete;
+    Model(Model&& ) _BTK_NOEXCEPT = delete;
     Model& operator=(const Model& ) = delete;
-    Model& operator=(Model&& ) noexcept = delete;
+    Model& operator=(Model&& ) _BTK_NOEXCEPT = delete;
     
     Node* segments();
-    // // Segment* findSegment() const noexcept;
+    // // Segment* findSegment() const _BTK_NOEXCEPT;
     //
     Node* joints();
     //
     // Node* chains();
     //
-    // // template <typename T> TimeSequence* trajectory(T&& coordinates) const noexcept;
+    // // template <typename T> TimeSequence* trajectory(T&& coordinates) const _BTK_NOEXCEPT;
     //
-    Rig* rig() const noexcept;
+    Rig* rig() const _BTK_NOEXCEPT;
   };
 };
 

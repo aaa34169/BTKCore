@@ -36,21 +36,19 @@
 #ifndef __btkIOHandler_h
 #define __btkIOHandler_h
 
+#include "btkIOExport.h"
 #include "btkOpaque.h"
 #include "btkEndianFormat.h"
 #include "btkException.h"
-#include "btkOption.h"
+#include "btkIOHandlerOption.h"
 #include "btkLogger.h"
+#include "btkMacros.h" // _BTK_CONSTEXPR, _BTK_NOEXCEPT
 
 #include <list>
 #include <string>
 #include <memory> // std::unique_ptr
 #include <vector>
 #include <type_traits> // std::is_same
-
-static constexpr const char _btk_IOHandler_Encoding[] = "Encoding";
-static constexpr const char _btk_IOHandler_ByteOrder[] = "ByteOrder";
-static constexpr const char _btk_IOHandler_DataStorage[] = "DataStorage";
 
 namespace btk
 {
@@ -59,7 +57,7 @@ namespace btk
   
   class IOHandlerPrivate;
   
-  class IOHandler
+  class BTK_IO_EXPORT IOHandler
   {
     BTK_DECLARE_PIMPL_ACCESSOR(IOHandler)
     
@@ -68,41 +66,42 @@ namespace btk
     enum class Capability : int {None = 0x00, Read = 0x01, Write = 0x02, ReadWrite = Read|Write};
     enum class Error : int {None, Device, UnsupportedFormat, InvalidData, Unexpected, Unknown};
     
-    using ByteOrder = EndianFormat;
-    enum class Encoding : int {Text = 0x01, Binary, Mix = Text|Binary};
-    enum class DataStorage : int {NotApplicable, Integer, Float};
-
-    using EncodingFormat = Option<_btk_IOHandler_Encoding,Encoding>;
-    using ByteOrderFormat = Option<_btk_IOHandler_ByteOrder,ByteOrder>;
-    using DataStorageFormat = Option<_btk_IOHandler_DataStorage,DataStorage>;
+    enum class Encoding : int {Text = 0x01, Binary, Mixed = Text|Binary};
+    using EncodingFormat = IOHandlerOption<Encoding>;
     
-    virtual ~IOHandler() noexcept;
+    using ByteOrder = EndianFormat;
+    using ByteOrderFormat = IOHandlerOption<ByteOrder>;
+    
+    enum class DataStorage : int {NotApplicable, Integer, Float};
+    using DataStorageFormat = IOHandlerOption<DataStorage>;
+    
+    virtual ~IOHandler() _BTK_NOEXCEPT;
     
     IOHandler() = delete;
     IOHandler(const IOHandler& ) = delete;
-    IOHandler(IOHandler&& ) noexcept = delete;
+    IOHandler(IOHandler&& ) _BTK_NOEXCEPT = delete;
     IOHandler& operator=(const IOHandler& ) = delete;
-    IOHandler& operator=(const IOHandler&& ) noexcept = delete;
+    IOHandler& operator=(const IOHandler&& ) _BTK_NOEXCEPT = delete;
     
-    virtual Capability capability() const noexcept;
+    virtual Capability capability() const _BTK_NOEXCEPT;
 
-    Signature detectSignature() const noexcept;
+    Signature detectSignature() const _BTK_NOEXCEPT;
     bool read(Node* output);
     bool write(const Node* input);
  
-    IODevice* device() const noexcept;
-    void setDevice(IODevice* device) noexcept;
+    IODevice* device() const _BTK_NOEXCEPT;
+    void setDevice(IODevice* device) _BTK_NOEXCEPT;
     
-    std::vector<const char*> availableOptions() const noexcept;
-    std::vector<const char*> availableOptionChoices(const char* option) const noexcept;
+    std::vector<const char*> availableOptions() const _BTK_NOEXCEPT;
+    std::vector<const char*> availableOptionChoices(const char* option) const _BTK_NOEXCEPT;
     
-    template <typename O> typename O::Format option() const noexcept;
-    template <typename O, typename V> void setOption(const V& value) noexcept;
-    // const char* option(const const char* name) const noexcept;
-    // void setOption(const char* name, const char* value) noexcept;
+    template <typename O> typename O::ValueType option() const _BTK_NOEXCEPT;
+    template <typename O, typename V> void setOption(const V& value) _BTK_NOEXCEPT;
+    // const char* option(const const char* name) const _BTK_NOEXCEPT;
+    // void setOption(const char* name, const char* value) _BTK_NOEXCEPT;
     
-    Error errorCode() const noexcept;
-    const std::string& errorMessage() const noexcept;
+    Error errorCode() const _BTK_NOEXCEPT;
+    const std::string& errorMessage() const _BTK_NOEXCEPT;
   
   protected:
     template <typename V, V v> struct stringify_option_value;
@@ -115,14 +114,14 @@ namespace btk
       {};
     };
     
-    IOHandler(IOHandlerPrivate& pimpl) noexcept;
+    IOHandler(IOHandlerPrivate& pimpl) _BTK_NOEXCEPT;
     
-    void option(const char* name, void* value) const noexcept;
-    void setOption(const char* name, const void* value) noexcept;
+    void option(const char* name, void* value) const _BTK_NOEXCEPT;
+    void setOption(const char* name, const void* value) _BTK_NOEXCEPT;
     
-    void setError(Error code = Error::None, const std::string& msg = "") noexcept;
+    void setError(Error code = Error::None, const std::string& msg = "") _BTK_NOEXCEPT;
     
-    virtual Signature validateSignature() const noexcept = 0;
+    virtual Signature validateSignature() const _BTK_NOEXCEPT = 0;
     virtual void readDevice(Node* output);
     virtual void writeDevice(const Node* input);
     
@@ -131,89 +130,45 @@ namespace btk
   
   // ----------------------------------------------------------------------- //
   
-  inline constexpr IOHandler::Capability operator& (IOHandler::Capability lhs, IOHandler::Capability rhs)
+  template <typename O>
+  typename O::ValueType IOHandler::option() const _BTK_NOEXCEPT
+  {
+    typename O::ValueType value;
+    this->option(O::name(),static_cast<void*>(&value));
+    return value;
+  };
+  
+  template <typename O, typename V>
+  inline void IOHandler::setOption(const V& value) _BTK_NOEXCEPT
+  {
+    static_assert(std::is_same<typename O::ValueType,V>::value, "The type of the given value does not correspond to the type of the option's value.");
+    this->setOption(O::name(),static_cast<const void*>(&value));
+  };
+  
+  // ----------------------------------------------------------------------- //
+  
+  inline _BTK_CONSTEXPR IOHandler::Capability operator& (IOHandler::Capability lhs, IOHandler::Capability rhs)
   {
     return static_cast<IOHandler::Capability>(static_cast<int>(lhs) & static_cast<int>(rhs));
   };
   
   // ----------------------------------------------------------------------- //
   
-  template <>
-  struct stringify_option_value<IOHandler::Encoding,IOHandler::Encoding::Binary>
-  {
-    static constexpr const char* c_str = "Binary";
-  };
-
-  template <>
-  struct stringify_option_value<IOHandler::Encoding,IOHandler::Encoding::Text>
-  {
-    static constexpr const char* c_str = "Text";
-  };
+  BTK_STRINGIFY_OPTION_NAME(IOHandler::EncodingFormat, "Encoding");
+  BTK_STRINGIFY_OPTION_VALUE(IOHandler::EncodingFormat, IOHandler::Encoding::Binary, "Binary");
+  BTK_STRINGIFY_OPTION_VALUE(IOHandler::EncodingFormat, IOHandler::Encoding::Text, "Text");
+  BTK_STRINGIFY_OPTION_VALUE(IOHandler::EncodingFormat, IOHandler::Encoding::Mixed, "Mixed");
   
-  template <>
-  struct stringify_option_value<IOHandler::Encoding,IOHandler::Encoding::Mix>
-  {
-    static constexpr const char* c_str = "Mix";
-  };
+  BTK_STRINGIFY_OPTION_NAME(IOHandler::ByteOrderFormat, "ByteOrder");
+  BTK_STRINGIFY_OPTION_VALUE(IOHandler::ByteOrderFormat, IOHandler::ByteOrder::VAXLittleEndian, "VAXLittleEndian");
+  BTK_STRINGIFY_OPTION_VALUE(IOHandler::ByteOrderFormat, IOHandler::ByteOrder::IEEELittleEndian, "IEEELittleEndian");
+  BTK_STRINGIFY_OPTION_VALUE(IOHandler::ByteOrderFormat, IOHandler::ByteOrder::IEEEBigEndian, "IEEEBigEndian");
+  BTK_STRINGIFY_OPTION_VALUE(IOHandler::ByteOrderFormat, IOHandler::ByteOrder::NotApplicable, "NotApplicable");
   
-  template <>
-  struct stringify_option_value<IOHandler::ByteOrder,IOHandler::ByteOrder::VAXLittleEndian>
-  {
-    static constexpr const char* c_str = "VAXLittleEndian";
-  };
-
-  template <>
-  struct stringify_option_value<IOHandler::ByteOrder,IOHandler::ByteOrder::IEEELittleEndian>
-  {
-    static constexpr const char* c_str = "IEEELittleEndian";
-  };
-  
-  template <>
-  struct stringify_option_value<IOHandler::ByteOrder,IOHandler::ByteOrder::IEEEBigEndian>
-  {
-    static constexpr const char* c_str = "IEEEBigEndian";
-  };
-  
-  template <>
-  struct stringify_option_value<IOHandler::ByteOrder,IOHandler::ByteOrder::NotApplicable>
-  {
-    static constexpr const char* c_str = "NotApplicable";
-  };
-  
-  template <>
-  struct stringify_option_value<IOHandler::DataStorage,IOHandler::DataStorage::NotApplicable>
-  {
-    static constexpr const char* c_str = "NotApplicable";
-  };
-  
-  template <>
-  struct stringify_option_value<IOHandler::DataStorage,IOHandler::DataStorage::Integer>
-  {
-    static constexpr const char* c_str = "Integer";
-  };
-  
-  template <>
-  struct stringify_option_value<IOHandler::DataStorage,IOHandler::DataStorage::Float>
-  {
-    static constexpr const char* c_str = "Float";
-  };
-  
-  // ----------------------------------------------------------------------- //
-  
-  template <typename O>
-  typename O::Format IOHandler::option() const noexcept
-  {
-    typename O::Format value;
-    this->option(O::name(),static_cast<void*>(&value));
-    return value;
-  };
-  
-  template <typename O, typename V>
-  inline void IOHandler::setOption(const V& value) noexcept
-  {
-    static_assert(std::is_same<typename O::Format,V>::value, "The type of the given value does not correspond to the type of the option's value.");
-    this->setOption(O::name(),static_cast<const void*>(&value));
-  };
+  BTK_STRINGIFY_OPTION_NAME(IOHandler::DataStorageFormat, "DataStorage");
+  BTK_STRINGIFY_OPTION_VALUE(IOHandler::DataStorageFormat, IOHandler::DataStorage::NotApplicable, "NotApplicable");
+  BTK_STRINGIFY_OPTION_VALUE(IOHandler::DataStorageFormat, IOHandler::DataStorage::Integer, "Integer");
+  BTK_STRINGIFY_OPTION_VALUE(IOHandler::DataStorageFormat, IOHandler::DataStorage::Float, "Float");
 };
   
 #endif // __btkIOHandler_h

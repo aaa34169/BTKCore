@@ -37,8 +37,14 @@
 #define __btklardXpr_h
 
 #include "btkConfigure.h" // Must be included before any Eigen header
+#include "btkMacros.h" // _BTK_CONSTEXPR, _BTK_NOEXCEPT
 
 #include <Eigen/Core>
+
+#include <utility> // std::declval
+
+#define _BTK_LARD_DECLVAL_NESTED(xpr) \
+  std::declval<const typename btk::lard::Nested<xpr>::type>()
 
 namespace btk
 {
@@ -91,11 +97,8 @@ namespace lard
     using Values = typename Traits<Derived>::Values;
     using Residuals = typename Traits<Derived>::Residuals;
     using Index = typename Traits<Derived>::Index;
-    enum : int
-    {
-      ColsAtCompileTime = Traits<Derived>::ColsAtCompileTime,
-      Processing = Traits<Derived>::Processing
-    };
+    static _BTK_CONSTEXPR int ColsAtCompileTime = Traits<Derived>::ColsAtCompileTime;
+    static _BTK_CONSTEXPR int Processing = Traits<Derived>::Processing;
   };
   
   template <int Cols>
@@ -104,11 +107,8 @@ namespace lard
     using Values = Eigen::Array<double,Eigen::Dynamic,Cols>;
     using Residuals = Eigen::Array<double,Eigen::Dynamic,1>;
     using Index = typename Values::Index;
-    enum : int
-    {
-      ColsAtCompileTime = Cols,
-      Processing = None
-    };
+    static _BTK_CONSTEXPR int ColsAtCompileTime = Cols;
+    static _BTK_CONSTEXPR int Processing = None;
   };
   
   template <>
@@ -122,11 +122,8 @@ namespace lard
     using Residuals = Eigen::Map<typename Traits<Derived>::Residuals>;
     using Index = typename Values::Index;
     using Scalar = typename Values::Scalar;
-    enum : int
-    {
-      ColsAtCompileTime = Traits<Derived>::ColsAtCompileTime,
-      Processing = None
-    };
+    static _BTK_CONSTEXPR int ColsAtCompileTime = Traits<Derived>::ColsAtCompileTime;
+    static _BTK_CONSTEXPR int Processing = None;
   };
   
   template <typename Derived>
@@ -136,11 +133,8 @@ namespace lard
     using Residuals = Eigen::Map<const typename Traits<Derived>::Residuals>;
     using Index = typename Values::Index;
     using Scalar = const typename Values::Scalar;
-    enum : int
-    {
-      ColsAtCompileTime = Traits<Derived>::ColsAtCompileTime,
-      Processing = None
-    };
+    static _BTK_CONSTEXPR int ColsAtCompileTime = Traits<Derived>::ColsAtCompileTime;
+    static _BTK_CONSTEXPR int Processing = None;
   };
   
   template <typename Xpr, int Cols>
@@ -149,11 +143,8 @@ namespace lard
     using Values = typename Traits<Array<Cols>>::Values;
     using Residuals = typename Traits<Array<Cols>>::Residuals;
     using Index = typename Values::Index;
-    enum : int
-    {
-      ColsAtCompileTime = Cols,
-      Processing = Traits<typename std::remove_const<Xpr>::type>::Processing
-    };
+    static _BTK_CONSTEXPR int ColsAtCompileTime = Cols;
+    static _BTK_CONSTEXPR int Processing = Traits<typename std::remove_const<Xpr>::type>::Processing;
   };
  
   template <typename Derived, typename Xpr>
@@ -162,11 +153,8 @@ namespace lard
     using Values = typename Traits<Xpr>::Values;
     using Residuals = typename Traits<Xpr>::Residuals;
     using Index = typename Values::Index;
-    enum : int
-    {
-      ColsAtCompileTime = Traits<Xpr>::ColsAtCompileTime,
-      Processing = Traits<Derived>::Processing
-    };
+    static _BTK_CONSTEXPR int ColsAtCompileTime = Traits<Xpr>::ColsAtCompileTime;
+    static _BTK_CONSTEXPR int Processing = Traits<Derived>::Processing;
   };
   
   template <typename Derived, typename XprOne, typename XprTwo>
@@ -175,14 +163,41 @@ namespace lard
     using Values = typename Traits<XprOne>::Values;
     using Residuals = typename Traits<XprOne>::Residuals;
     using Index = typename Values::Index;
-    enum : int
-    {
-      ColsAtCompileTime = Traits<XprTwo>::ColsAtCompileTime, // XprTwo to have the good number of columns after some operation like TransformOp
-      Processing = Traits<Derived>::Processing
-    };
+    static _BTK_CONSTEXPR int  ColsAtCompileTime = Traits<XprTwo>::ColsAtCompileTime; // XprTwo to have the good number of columns after some operation like TransformOp
+    static _BTK_CONSTEXPR int Processing = Traits<Derived>::Processing;
   };
   
-  // NOTE : Traits specialization for each operation is declared before this one
+  // NOTE : Traits specialization for each operation is declared just before it.
+  
+  // ----------------------------------------------------------------------- //
+  //                                NESTED
+  // ----------------------------------------------------------------------- //
+  
+  template <typename T> struct Nested {};
+  
+  template <typename Derived>
+  struct Nested<Data<Derived>>
+  {
+    using type = const Data<Derived>&; // Reference
+  };
+  
+  template <typename Xpr, int Cols>
+  struct Nested<BlockOp<Xpr,Cols>>
+  {
+    using type = const BlockOp<Xpr,Cols>; // Plain object
+  };
+  
+  template <typename Derived, typename Xpr>
+  struct Nested<UnaryOp<Derived,Xpr>>
+  {
+    using type = Derived; // Plain object
+  };
+  
+  template <typename Derived, typename XprOne, typename XprTwo>
+  struct Nested<BinaryOp<Derived,XprOne,XprTwo>>
+  {
+    using type = Derived; // Plain object
+  };
 };
 };
 
@@ -202,35 +217,32 @@ namespace lard
   public:
     using DerivedType = typename std::remove_const<Derived>::type;
     using Index = typename Traits<DerivedType>::Index;
-    enum : int
-    {
-      ColsAtCompileTime = Traits<DerivedType>::ColsAtCompileTime,
-      Processing = Traits<DerivedType>::Processing
-    };
+    static _BTK_CONSTEXPR int ColsAtCompileTime = Traits<DerivedType>::ColsAtCompileTime;
+    static _BTK_CONSTEXPR int Processing = Traits<DerivedType>::Processing;
     
-    operator Derived& () noexcept {return static_cast<Derived&>(*this);};
-    operator const Derived& () const noexcept {return static_cast<const Derived&>(*this);};
-    operator double () const noexcept {return (static_cast<const Derived&>(*this).derived().residuals().value() >= 0.0) ? static_cast<const Derived&>(*this).derived().values().value() : 0.0;};
+    operator Derived& () _BTK_NOEXCEPT {return static_cast<Derived&>(*this);};
+    operator const Derived& () const _BTK_NOEXCEPT {return static_cast<const Derived&>(*this);};
+    operator double () const _BTK_NOEXCEPT {return (static_cast<const Derived&>(*this).derived().residuals().value() >= 0.0) ? static_cast<const Derived&>(*this).derived().values().value() : 0.0;};
     
     // Next methods are defined after the declaration of the operation BlockOp
-    template <int Cols> BlockOp<Derived,Cols> block(Index index) noexcept;
-    template <int Cols> const BlockOp<const Derived,Cols> block(Index index) const noexcept;
+    template <int Cols> BlockOp<Derived,Cols> block(Index index) _BTK_NOEXCEPT;
+    template <int Cols> const BlockOp<const Derived,Cols> block(Index index) const _BTK_NOEXCEPT;
     // Next method is defined after the declaration of the operation MeanOp
-    const MeanOp<Derived> mean() const noexcept;
+    const MeanOp<Derived> mean() const _BTK_NOEXCEPT;
     // Next method is defined after the declaration of the operation NormOp
-    const NormOp<Derived> norm() const noexcept;
+    const NormOp<Derived> norm() const _BTK_NOEXCEPT;
     // Next method is defined after the declaration of the operation NormalizedOp
-    const NormalizedOp<Derived> normalized() const noexcept;
+    const NormalizedOp<Derived> normalized() const _BTK_NOEXCEPT;
     // Next method is defined after the declaration of the operation CrossOp
-    template <typename U> const CrossOp<Derived, U> cross(const Base<U>& other) const noexcept;
+    template <typename U> const CrossOp<Derived, U> cross(const Base<U>& other) const _BTK_NOEXCEPT;
     // Next method is defined after the declaration of the operation InverseOp
-    const InverseOp<Derived> inverse() const noexcept;
+    const InverseOp<Derived> inverse() const _BTK_NOEXCEPT;
     // Next method is defined after the declaration of the operation ReplicateOp
-    const ReplicateOp<Derived> replicate(Index rows) const noexcept;
+    const ReplicateOp<Derived> replicate(Index rows) const _BTK_NOEXCEPT;
     // Next method is defined after the declaration of the operation TransformOp
-    template <typename U> const TransformOp<Derived,U> transform(const Base<U>& other) const noexcept;    
+    template <typename U> const TransformOp<Derived,U> transform(const Base<U>& other) const _BTK_NOEXCEPT;    
     // Next method is defined after the declaration of the operation EulerAnglesOp
-    const EulerAnglesOp<Derived> eulerAngles(Index a0, Index a1, Index a2) const noexcept;
+    const EulerAnglesOp<Derived> eulerAngles(Index a0, Index a1, Index a2) const _BTK_NOEXCEPT;
     
     template <typename U> static inline auto generateResiduals(const U& condition) -> decltype(condition.select(Traits<Array<U::ColsAtCompileTime>>::Residuals::Zero(condition.rows(),1),-1.0)) {return condition.select(Traits<Array<U::ColsAtCompileTime>>::Residuals::Zero(condition.rows(),1),-1.0);};
   };
@@ -249,37 +261,37 @@ namespace lard
     
     Data(const Data& other) = default;
     
-    Index rows() const noexcept {return this->m_Values.rows();};
-    Index cols() const noexcept {return this->m_Values.cols();};
+    Index rows() const _BTK_NOEXCEPT {return this->m_Values.rows();};
+    Index cols() const _BTK_NOEXCEPT {return this->m_Values.cols();};
     
-    Values& values() noexcept {return this->m_Values;};
-    const Values& values() const noexcept {return this->m_Values;};
-    Residuals& residuals() noexcept {return this->m_Residuals;};
-    const Residuals& residuals() const noexcept {return this->m_Residuals;};
+    Values& values() _BTK_NOEXCEPT {return this->m_Values;};
+    const Values& values() const _BTK_NOEXCEPT {return this->m_Values;};
+    Residuals& residuals() _BTK_NOEXCEPT {return this->m_Residuals;};
+    const Residuals& residuals() const _BTK_NOEXCEPT {return this->m_Residuals;};
     
-    void setZeroResiduals() noexcept {this->m_Residuals.setZero();};
+    void setZeroResiduals() _BTK_NOEXCEPT {this->m_Residuals.setZero();};
     
-    bool isValid() const noexcept {return (this->m_Values.rows() != 0) && (this->m_Residuals.rows() != 0);};
-    bool isOccluded() const noexcept {return (!this->isValid() || (this->m_Residuals < 0.0).all());};
+    bool isValid() const _BTK_NOEXCEPT {return (this->m_Values.rows() != 0) && (this->m_Residuals.rows() != 0);};
+    bool isOccluded() const _BTK_NOEXCEPT {return (!this->isValid() || (this->m_Residuals < 0.0).all());};
     
-    Derived& derived() noexcept {return static_cast<Derived&>(*this);};
-    const Derived& derived() const noexcept {return static_cast<const Derived&>(*this);};
+    Derived& derived() _BTK_NOEXCEPT {return static_cast<Derived&>(*this);};
+    const Derived& derived() const _BTK_NOEXCEPT {return static_cast<const Derived&>(*this);};
     
-    BlockOp<Data<Derived>,1> x() noexcept;
-    const BlockOp<const Data<Derived>,1> x() const noexcept;
-    BlockOp<Data<Derived>,1> y() noexcept;
-    const BlockOp<const Data<Derived>,1> y() const noexcept;
-    BlockOp<Data<Derived>,1> z() noexcept;
-    const BlockOp<const Data<Derived>,1> z() const noexcept;
+    BlockOp<Data<Derived>,1> x() _BTK_NOEXCEPT;
+    const BlockOp<const Data<Derived>,1> x() const _BTK_NOEXCEPT;
+    BlockOp<Data<Derived>,1> y() _BTK_NOEXCEPT;
+    const BlockOp<const Data<Derived>,1> y() const _BTK_NOEXCEPT;
+    BlockOp<Data<Derived>,1> z() _BTK_NOEXCEPT;
+    const BlockOp<const Data<Derived>,1> z() const _BTK_NOEXCEPT;
     
-    BlockOp<Data<Derived>,3> u() noexcept;
-    const BlockOp<const Data<Derived>,3> u() const noexcept;
-    BlockOp<Data<Derived>,3> v() noexcept;
-    const BlockOp<const Data<Derived>,3> v() const noexcept;
-    BlockOp<Data<Derived>,3> w() noexcept;
-    const BlockOp<const Data<Derived>,3> w() const noexcept;
-    BlockOp<Data<Derived>,3> o() noexcept;
-    const BlockOp<const Data<Derived>,3> o() const noexcept;
+    BlockOp<Data<Derived>,3> u() _BTK_NOEXCEPT;
+    const BlockOp<const Data<Derived>,3> u() const _BTK_NOEXCEPT;
+    BlockOp<Data<Derived>,3> v() _BTK_NOEXCEPT;
+    const BlockOp<const Data<Derived>,3> v() const _BTK_NOEXCEPT;
+    BlockOp<Data<Derived>,3> w() _BTK_NOEXCEPT;
+    const BlockOp<const Data<Derived>,3> w() const _BTK_NOEXCEPT;
+    BlockOp<Data<Derived>,3> o() _BTK_NOEXCEPT;
+    const BlockOp<const Data<Derived>,3> o() const _BTK_NOEXCEPT;
     
   protected:
     Data() = delete;
@@ -374,27 +386,14 @@ namespace lard
   inline Array<Cols>::Array(const Base<U>& other)
   : Array()
   {
-    // static_assert(Cols == Traits<U>::ColsAtCompileTime, "The number of columns is not the same.");
     Array::assign(*this, other);
-    // const U& o = other;
-    // this->m_Residuals.lazyAssign(Array::generateResiduals(o.derived().residuals() >= 0.0));
-    // this->m_Values.lazyAssign((this->m_Residuals.template replicate<1,Cols>() >= 0.0).select(o.derived().values(),0.0));
   };
-  // : Data<Array<Cols>>(static_cast<const U&>(other).derived().values(), static_cast<const U&>(other).derived().residuals())
-  // {
-  //   static_assert(Cols == Traits<U>::ColsAtCompileTime, "The number of columns is not the same.");
-  // };
   
   template <int Cols>
   template <typename U>
   inline Array<Cols>& Array<Cols>::operator= (const Base<U>& other)
   {
-    // static_assert(Cols == Traits<U>::ColsAtCompileTime, "The number of columns is not the same.");
     Array::assign(*this, other);
-    // const U& o = other;
-    // // Array::assignValues(this->m_Values,o.derived().values());
-    // this->m_Residuals.lazyAssign(Array::generateResiduals(o.derived().residuals() >= 0.0));
-    // this->m_Values.lazyAssign((this->m_Residuals.template replicate<1,Cols>() >= 0.0).select(o.derived().values(),0.0));
     return *this;
   };
 
@@ -431,10 +430,6 @@ namespace lard
   template <typename U>
   inline Map<Derived>& Map<Derived>::operator= (const Base<U>& other)
   {
-    // static_assert(Traits<Derived>::ColsAtCompileTime == Traits<U>::ColsAtCompileTime, "The number of columns is not the same.");
-    // const U& o = other;
-    // Map::assignValues(this->m_Values,o.derived().values());
-    // this->m_Residuals.lazyAssign(o.derived().residuals());
     Map::assign(*this, other);
     return *this;
   };
@@ -464,11 +459,10 @@ namespace lard
     template <typename U, typename V, typename W, typename O> Motion(const Base<U>& u, const Base<V>& v, const Base<W>& w, const Base<O>& o);
     template <typename U> Motion(const Base<U>& other);
     
-    auto orientations() const noexcept -> decltype(this->m_Values.topLeftCorner(this->rows(),Orientations::ColsAtCompileTime)) {return this->m_Values.topLeftCorner(this->rows(),Orientations::ColsAtCompileTime);};
-    auto positions() const noexcept -> decltype(this->m_Values.topRightCorner(this->rows(),Positions::ColsAtCompileTime)) {return this->m_Values.topRightCorner(this->rows(),Positions::ColsAtCompileTime);};
+    const Eigen::Block<const Array<12>::Values> orientations() const _BTK_NOEXCEPT {return this->m_Values.topLeftCorner(this->rows(),Orientations::ColsAtCompileTime);};
+    const Eigen::Block<const Array<12>::Values> positions() const _BTK_NOEXCEPT {return this->m_Values.topRightCorner(this->rows(),Positions::ColsAtCompileTime);};
   };
   
-
   /**
    * Default constructor
    */
@@ -496,18 +490,18 @@ namespace lard
     static_assert(V::ColsAtCompileTime == 3, "The input 'v' must be an array with 3 columns (i.e. a Vector)");
     static_assert(W::ColsAtCompileTime == 3, "The input 'w' must be an array with 3 columns (i.e. a Vector)");
     static_assert(O::ColsAtCompileTime == 3, "The input 'o' must be an array with 3 columns (i.e. a Vector)");
-    const U& xpr1 = u;
-    const Vector::Values v1 = xpr1.derived().values();
-    const Vector::Residuals r1 = xpr1.derived().residuals();
-    const V& xpr2 = v;
-    const Vector::Values v2 = xpr2.derived().values();
-    const Vector::Residuals r2 = xpr2.derived().residuals();
-    const W& xpr3 = w;
-    const Vector::Values v3 = xpr3.derived().values();
-    const Vector::Residuals r3 = xpr3.derived().residuals();
-    const O& xpr4 = o;
-    const Vector::Values v4 = xpr4.derived().values();
-    const Vector::Residuals r4 = xpr4.derived().residuals();
+    const auto& xpr1 = static_cast<const U&>(u).derived();
+    const Vector::Values v1 = xpr1.values();
+    const Vector::Residuals r1 = xpr1.residuals();
+    const auto& xpr2 = static_cast<const V&>(v).derived();
+    const Vector::Values v2 = xpr2.values();
+    const Vector::Residuals r2 = xpr2.residuals();
+    const auto& xpr3 = static_cast<const W&>(w).derived();
+    const Vector::Values v3 = xpr3.values();
+    const Vector::Residuals r3 = xpr3.residuals();
+    const auto& xpr4 = static_cast<const O&>(o).derived();
+    const Vector::Values v4 = xpr4.values();
+    const Vector::Residuals r4 = xpr4.residuals();
     assert(v1.rows() == v2.rows());
     assert(v2.rows() == v3.rows());
     assert(v3.rows() == v4.rows());
@@ -561,27 +555,27 @@ namespace lard
       assert(this->mr_Xpr.cols() >= (this->m_Index + Cols));
     };
     
-    Index rows() const noexcept {return this->mr_Xpr.rows();};
-    Index cols() const noexcept {return Cols;};
+    Index rows() const _BTK_NOEXCEPT {return this->mr_Xpr.rows();};
+    Index cols() const _BTK_NOEXCEPT {return Cols;};
     
-    const BlockOp& derived() const noexcept {return *this;};
+    const BlockOp& derived() const _BTK_NOEXCEPT {return *this;};
     
-    auto values() noexcept -> decltype(this->mr_Xpr.derived().values().block(0,this->m_Index,this->mr_Xpr.derived().values().rows(),Cols))
+    auto values() _BTK_NOEXCEPT -> Eigen::Block<typename std::remove_reference<decltype(std::declval<Xpr>().derived().values())>::type>
     {
       return this->mr_Xpr.derived().values().block(0,this->m_Index,this->mr_Xpr.derived().values().rows(),Cols);
     };
     
-    auto values() const noexcept -> decltype(this->mr_Xpr.derived().values().block(0,this->m_Index,this->mr_Xpr.derived().values().rows(),Cols))
+    auto values() const _BTK_NOEXCEPT -> Eigen::Block<typename std::remove_reference<decltype(std::declval<Xpr>().derived().values())>::type>
     {
       return this->mr_Xpr.derived().values().block(0,this->m_Index,this->mr_Xpr.derived().values().rows(),Cols);
     };
 
-    auto residuals() noexcept -> decltype(this->mr_Xpr.derived().residuals().block(0,0,this->mr_Xpr.derived().values().rows(),1))
+    auto residuals() _BTK_NOEXCEPT -> Eigen::Block<typename std::remove_reference<decltype(std::declval<Xpr>().derived().residuals())>::type>
     {
       return this->mr_Xpr.derived().residuals().block(0,0,this->mr_Xpr.derived().residuals().rows(),1);
     };
     
-    auto residuals() const noexcept -> decltype(this->mr_Xpr.derived().residuals().block(0,0,this->mr_Xpr.derived().residuals().rows(),1))
+    auto residuals() const _BTK_NOEXCEPT -> Eigen::Block<typename std::remove_reference<decltype(std::declval<Xpr>().derived().residuals())>::type>
     {
       return this->mr_Xpr.derived().residuals().block(0,0,this->mr_Xpr.derived().residuals().rows(),1);
     };
@@ -604,33 +598,33 @@ namespace lard
   
   template <typename Derived>
   template <int Cols>
-  inline BlockOp<Derived,Cols> Base<Derived>::block(Index index) noexcept
+  inline BlockOp<Derived,Cols> Base<Derived>::block(Index index) _BTK_NOEXCEPT
   {
     return BlockOp<Derived,Cols>(*this,index);
   };
 
   template <typename Derived>
   template <int Cols>
-  inline const BlockOp<const Derived,Cols> Base<Derived>::block(Index index) const noexcept
+  inline const BlockOp<const Derived,Cols> Base<Derived>::block(Index index) const _BTK_NOEXCEPT
   {
     return BlockOp<const Derived,Cols>(*this,index);
   };
   
-  template <typename Derived> inline BlockOp<Data<Derived>,1> Data<Derived>::x() noexcept {return this->template block<1>(0);};
-  template <typename Derived> inline const BlockOp<const Data<Derived>,1> Data<Derived>::x() const noexcept {return this->template block<1>(0);};
-  template <typename Derived> inline BlockOp<Data<Derived>,1> Data<Derived>::y() noexcept {return this->template block<1>(1);};
-  template <typename Derived> inline const BlockOp<const Data<Derived>,1> Data<Derived>::y() const noexcept {return this->template block<1>(1);};
-  template <typename Derived> inline BlockOp<Data<Derived>,1> Data<Derived>::z() noexcept {return this->template block<1>(2);};
-  template <typename Derived> inline const BlockOp<const Data<Derived>,1> Data<Derived>::z() const noexcept {return this->template block<1>(2);};
+  template <typename Derived> inline BlockOp<Data<Derived>,1> Data<Derived>::x() _BTK_NOEXCEPT {return this->template block<1>(0);};
+  template <typename Derived> inline const BlockOp<const Data<Derived>,1> Data<Derived>::x() const _BTK_NOEXCEPT {return this->template block<1>(0);};
+  template <typename Derived> inline BlockOp<Data<Derived>,1> Data<Derived>::y() _BTK_NOEXCEPT {return this->template block<1>(1);};
+  template <typename Derived> inline const BlockOp<const Data<Derived>,1> Data<Derived>::y() const _BTK_NOEXCEPT {return this->template block<1>(1);};
+  template <typename Derived> inline BlockOp<Data<Derived>,1> Data<Derived>::z() _BTK_NOEXCEPT {return this->template block<1>(2);};
+  template <typename Derived> inline const BlockOp<const Data<Derived>,1> Data<Derived>::z() const _BTK_NOEXCEPT {return this->template block<1>(2);};
   
-  template <typename Derived> inline BlockOp<Data<Derived>,3> Data<Derived>::u() noexcept {return this->template block<3>(0);};
-  template <typename Derived> inline const BlockOp<const Data<Derived>,3> Data<Derived>::u() const noexcept {return this->template block<3>(0);};
-  template <typename Derived> inline BlockOp<Data<Derived>,3> Data<Derived>::v() noexcept {return this->template block<3>(3);};
-  template <typename Derived> inline const BlockOp<const Data<Derived>,3> Data<Derived>::v() const noexcept {return this->template block<3>(3);};
-  template <typename Derived> inline BlockOp<Data<Derived>,3> Data<Derived>::w() noexcept {return this->template block<3>(6);};
-  template <typename Derived> inline const BlockOp<const Data<Derived>,3> Data<Derived>::w() const noexcept {return this->template block<3>(6);};
-  template <typename Derived> inline BlockOp<Data<Derived>,3> Data<Derived>::o() noexcept {return this->template block<3>(9);};
-  template <typename Derived> inline const BlockOp<const Data<Derived>,3> Data<Derived>::o() const noexcept {return this->template block<3>(9);};
+  template <typename Derived> inline BlockOp<Data<Derived>,3> Data<Derived>::u() _BTK_NOEXCEPT {return this->template block<3>(0);};
+  template <typename Derived> inline const BlockOp<const Data<Derived>,3> Data<Derived>::u() const _BTK_NOEXCEPT {return this->template block<3>(0);};
+  template <typename Derived> inline BlockOp<Data<Derived>,3> Data<Derived>::v() _BTK_NOEXCEPT {return this->template block<3>(3);};
+  template <typename Derived> inline const BlockOp<const Data<Derived>,3> Data<Derived>::v() const _BTK_NOEXCEPT {return this->template block<3>(3);};
+  template <typename Derived> inline BlockOp<Data<Derived>,3> Data<Derived>::w() _BTK_NOEXCEPT {return this->template block<3>(6);};
+  template <typename Derived> inline const BlockOp<const Data<Derived>,3> Data<Derived>::w() const _BTK_NOEXCEPT {return this->template block<3>(6);};
+  template <typename Derived> inline BlockOp<Data<Derived>,3> Data<Derived>::o() _BTK_NOEXCEPT {return this->template block<3>(9);};
+  template <typename Derived> inline const BlockOp<const Data<Derived>,3> Data<Derived>::o() const _BTK_NOEXCEPT {return this->template block<3>(9);};
   
   // ----------------------------------------------------------------------- //
   
@@ -640,19 +634,21 @@ namespace lard
     using Index = typename Traits<UnaryOp<Derived, Xpr>>::Index;
     
   protected:
-    const Xpr& mr_Xpr;
+    typename Nested<Xpr>::type m_Xpr;
     
   public:
     UnaryOp(const Base<Xpr>& x)
-    : mr_Xpr(x)
+    : m_Xpr(static_cast<const Xpr&>(x).derived())
     {
-      assert(this->mr_Xpr.rows() > 0);
+      assert(this->m_Xpr.rows() > 0);
     };
     
-    Index rows() const noexcept {return static_cast<const Derived&>(*this).rows();};
-    Index cols() const noexcept {return Traits<UnaryOp<Derived,Xpr>>::ColsAtCompileTime;};
+    Index rows() const _BTK_NOEXCEPT {return static_cast<const Derived&>(*this).rows();};
+    Index cols() const _BTK_NOEXCEPT {return Traits<UnaryOp<Derived,Xpr>>::ColsAtCompileTime;};
     
-    const Derived& derived() const noexcept {return static_cast<const Derived&>(*this);};
+    const Derived& derived() const _BTK_NOEXCEPT {return static_cast<const Derived&>(*this);};
+    
+    UnaryOp& operator=(const UnaryOp& ) = delete;
   };
   
   // ----------------------------------------------------------------------- //
@@ -663,22 +659,24 @@ namespace lard
     using Index = typename Traits<BinaryOp<Derived, XprOne, XprTwo>>::Index;
     
   protected:
-    const XprOne& mr_Xpr1;
-    const XprTwo& mr_Xpr2;
+    typename Nested<XprOne>::type m_Xpr1;
+    typename Nested<XprTwo>::type m_Xpr2;
     
   public:
     BinaryOp(const Base<XprOne>& x1, const Base<XprTwo>& x2)
-    : mr_Xpr1(x1), mr_Xpr2(x2)
+    : m_Xpr1(static_cast<const XprOne&>(x1).derived()), m_Xpr2(static_cast<const XprTwo&>(x2).derived())
     {
-      assert(this->mr_Xpr1.rows() > 0);
-      assert(this->mr_Xpr2.rows() > 0);
-      assert(this->mr_Xpr1.rows() == this->mr_Xpr2.rows());
+      assert(this->m_Xpr1.rows() > 0);
+      assert(this->m_Xpr2.rows() > 0);
+      assert(this->m_Xpr1.rows() == this->m_Xpr2.rows());
     };
     
-    Index rows() const noexcept {return static_cast<const Derived&>(*this).rows();};
-    Index cols() const noexcept {return Traits<BinaryOp<Derived,XprOne,XprTwo>>::ColsAtCompileTime;};
+    Index rows() const _BTK_NOEXCEPT {return static_cast<const Derived&>(*this).rows();};
+    Index cols() const _BTK_NOEXCEPT {return Traits<BinaryOp<Derived,XprOne,XprTwo>>::ColsAtCompileTime;};
     
-    const Derived& derived() const noexcept {return static_cast<const Derived&>(*this);};
+    const Derived& derived() const _BTK_NOEXCEPT {return static_cast<const Derived&>(*this);};
+    
+    BinaryOp& operator=(const BinaryOp& ) = delete;
   };
   
   // ----------------------------------------------------------------------- //
@@ -686,10 +684,7 @@ namespace lard
   template <typename Xpr>
   struct Traits<NormOp<Xpr>>
   {
-    enum : int
-    {
-      Processing = ValuesOnly,
-    };
+    static _BTK_CONSTEXPR int Processing = ValuesOnly;
   };
   
   template <typename Xpr>
@@ -698,11 +693,8 @@ namespace lard
     using Values = typename Traits<Xpr>::Values;
     using Residuals = typename Traits<Xpr>::Residuals;
     using Index = typename Values::Index;
-    enum : int
-    {
-      ColsAtCompileTime = 1,
-      Processing = Traits<NormOp<Xpr>>::Processing
-    };
+    static _BTK_CONSTEXPR int ColsAtCompileTime = 1;
+    static _BTK_CONSTEXPR int Processing = Traits<NormOp<Xpr>>::Processing;
   };
 
   template <typename Xpr>
@@ -715,21 +707,21 @@ namespace lard
     : UnaryOp<NormOp<Xpr>,Xpr>(x)
     {};
     
-    Index rows() const noexcept {return this->mr_Xpr.rows();};
+    Index rows() const _BTK_NOEXCEPT {return this->m_Xpr.rows();};
 
-    auto values() const noexcept -> decltype(this->mr_Xpr.derived().values().square().rowwise().sum().sqrt())
+    auto values() const _BTK_NOEXCEPT -> decltype(_BTK_LARD_DECLVAL_NESTED(Xpr).values().square().rowwise().sum().sqrt())
     {
-      return this->mr_Xpr.derived().values().square().rowwise().sum().sqrt();
+      return this->m_Xpr.values().square().rowwise().sum().sqrt();
     };
 
-    auto residuals() const noexcept -> decltype(this->mr_Xpr.derived().residuals())
+    auto residuals() const _BTK_NOEXCEPT -> decltype(_BTK_LARD_DECLVAL_NESTED(Xpr).residuals())
     {
-      return this->mr_Xpr.derived().residuals();
+      return this->m_Xpr.residuals();
     };
   };
   
   template <typename Derived>
-  inline const NormOp<Derived> Base<Derived>::norm() const noexcept
+  inline const NormOp<Derived> Base<Derived>::norm() const _BTK_NOEXCEPT
   {
     return NormOp<Derived>(*this);
   };
@@ -739,10 +731,7 @@ namespace lard
   template <typename Xpr>
   struct Traits<MeanOp<Xpr>>
   {
-    enum : int
-    {
-      Processing = Full,
-    };
+    static _BTK_CONSTEXPR int Processing = Full;
   };
 
   template <typename Xpr>
@@ -755,22 +744,22 @@ namespace lard
     : UnaryOp<MeanOp<Xpr>,Xpr>(x)
     {}
       
-    Index rows() const noexcept {return this->mr_Xpr.rows();};
+    Index rows() const _BTK_NOEXCEPT {return this->m_Xpr.rows();};
 
-    auto values() const noexcept -> decltype((this->mr_Xpr.derived().residuals() >= 0.0).template replicate<1,Xpr::ColsAtCompileTime>().select(this->mr_Xpr.derived().values(), 0.0).colwise().sum() / ((this->mr_Xpr.derived().residuals() >= 0.0).any() ? (this->mr_Xpr.derived().residuals() >= 0.0).count() : 1.0))
+    auto values() const _BTK_NOEXCEPT -> decltype((_BTK_LARD_DECLVAL_NESTED(Xpr).residuals() >= 0.0).template replicate<1,Xpr::ColsAtCompileTime>().select(_BTK_LARD_DECLVAL_NESTED(Xpr).values(), 0.0).colwise().sum() / ((_BTK_LARD_DECLVAL_NESTED(Xpr).residuals() >= 0.0).any() ? (_BTK_LARD_DECLVAL_NESTED(Xpr).residuals() >= 0.0).count() : 1.0))
     {
-      const auto& cond = (this->mr_Xpr.derived().residuals() >= 0.0);
-      return cond.template replicate<1,Xpr::ColsAtCompileTime>().select(this->mr_Xpr.derived().values(), 0.0).colwise().sum() / (cond.any() ? cond.count() : 1.0);
+      const auto& cond = (this->m_Xpr.residuals() >= 0.0);
+      return cond.template replicate<1,Xpr::ColsAtCompileTime>().select(this->m_Xpr.values(), 0.0).colwise().sum() / (cond.any() ? cond.count() : 1.0);
     };
 
-    auto residuals() const noexcept -> decltype(MeanOp::generateResiduals((this->mr_Xpr.derived().residuals() >= 0.0).colwise().sum()))
+    auto residuals() const _BTK_NOEXCEPT -> decltype(MeanOp::generateResiduals((_BTK_LARD_DECLVAL_NESTED(Xpr).residuals() >= 0.0).colwise().sum()))
     {
-      return MeanOp::generateResiduals((this->mr_Xpr.derived().residuals() >= 0.0).colwise().sum());
+      return MeanOp::generateResiduals((this->m_Xpr.residuals() >= 0.0).colwise().sum());
     };
   };
   
   template <typename Derived>
-  inline const MeanOp<Derived> Base<Derived>::mean() const noexcept
+  inline const MeanOp<Derived> Base<Derived>::mean() const _BTK_NOEXCEPT
   {
     return MeanOp<Derived>(*this);
   };
@@ -780,10 +769,7 @@ namespace lard
   template <typename XprOne, typename XprTwo>
   struct Traits<DifferenceOp<XprOne,XprTwo>>
   {
-    enum : int
-    {
-      Processing = Full,
-    };
+    static _BTK_CONSTEXPR int Processing = Full;
   };
 
   template <typename XprOne, typename XprTwo>
@@ -797,19 +783,19 @@ namespace lard
     DifferenceOp(const Base<XprOne>& x1, const Base<XprTwo>& x2)
     : BinaryOp<DifferenceOp<XprOne, XprTwo>, XprOne, XprTwo>(x1,x2)
     {
-      assert(this->mr_Xpr1.rows() == this->mr_Xpr2.rows());
+      assert(this->m_Xpr1.rows() == this->m_Xpr2.rows());
     };
     
-    Index rows() const noexcept {return this->mr_Xpr1.rows();};
+    Index rows() const _BTK_NOEXCEPT {return this->m_Xpr1.rows();};
 
-    auto values() const noexcept -> decltype(this->mr_Xpr1.derived().values() - this->mr_Xpr2.derived().values())
+    auto values() const _BTK_NOEXCEPT -> decltype(_BTK_LARD_DECLVAL_NESTED(XprOne).values() - _BTK_LARD_DECLVAL_NESTED(XprTwo).values())
     {
-      return this->mr_Xpr1.derived().values() - this->mr_Xpr2.derived().values();
+      return this->m_Xpr1.values() - this->m_Xpr2.values();
     };
   
-    auto residuals() const noexcept -> decltype(DifferenceOp::generateResiduals((this->mr_Xpr1.derived().residuals() >= 0.0) && (this->mr_Xpr2.derived().residuals() >= 0.0)))
+    auto residuals() const _BTK_NOEXCEPT -> decltype(DifferenceOp::generateResiduals((_BTK_LARD_DECLVAL_NESTED(XprOne).residuals() >= 0.0) && (_BTK_LARD_DECLVAL_NESTED(XprTwo).residuals() >= 0.0)))
     {
-      return DifferenceOp::generateResiduals((this->mr_Xpr1.derived().residuals() >= 0.0) && (this->mr_Xpr2.derived().residuals() >= 0.0));
+      return DifferenceOp::generateResiduals((this->m_Xpr1.residuals() >= 0.0) && (this->m_Xpr2.residuals() >= 0.0));
     };
   };
   
@@ -818,10 +804,7 @@ namespace lard
   template <typename XprOne, typename XprTwo>
   struct Traits<SumOp<XprOne,XprTwo>>
   {
-    enum : int
-    {
-      Processing = Full,
-    };
+    static _BTK_CONSTEXPR int Processing = Full;
   };
 
   template <typename XprOne, typename XprTwo>
@@ -835,19 +818,19 @@ namespace lard
     SumOp(const Base<XprOne>& x1, const Base<XprTwo>& x2)
     : BinaryOp<SumOp<XprOne, XprTwo>, XprOne, XprTwo>(x1,x2)
     {
-      assert(this->mr_Xpr1.rows() == this->mr_Xpr2.rows());
+      assert(this->m_Xpr1.rows() == this->m_Xpr2.rows());
     };
     
-    Index rows() const noexcept {return this->mr_Xpr1.rows();};
+    Index rows() const _BTK_NOEXCEPT {return this->m_Xpr1.rows();};
 
-    auto values() const noexcept -> decltype(this->mr_Xpr1.derived().values() + this->mr_Xpr2.derived().values())
+    auto values() const _BTK_NOEXCEPT -> decltype(_BTK_LARD_DECLVAL_NESTED(XprOne).values() + _BTK_LARD_DECLVAL_NESTED(XprTwo).values())
     {
-      return this->mr_Xpr1.derived().values() + this->mr_Xpr2.derived().values();
+      return this->m_Xpr1.values() + this->m_Xpr2.values();
     };
   
-    auto residuals() const noexcept -> decltype(SumOp::generateResiduals((this->mr_Xpr1.derived().residuals() >= 0.0) && (this->mr_Xpr2.derived().residuals() >= 0.0)))
+    auto residuals() const _BTK_NOEXCEPT -> decltype(SumOp::generateResiduals((_BTK_LARD_DECLVAL_NESTED(XprOne).residuals() >= 0.0) && (_BTK_LARD_DECLVAL_NESTED(XprTwo).residuals() >= 0.0)))
     {
-      return SumOp::generateResiduals((this->mr_Xpr1.derived().residuals() >= 0.0) && (this->mr_Xpr2.derived().residuals() >= 0.0));
+      return SumOp::generateResiduals((this->m_Xpr1.residuals() >= 0.0) && (this->m_Xpr2.residuals() >= 0.0));
     };
   };
   
@@ -856,10 +839,7 @@ namespace lard
   template <typename Xpr>
   struct Traits<ScaleOp<Xpr>>
   {
-    enum : int
-    {
-      Processing = ValuesOnly,
-    };
+    static _BTK_CONSTEXPR int Processing = ValuesOnly;
   };
 
   template <typename Xpr>
@@ -874,16 +854,16 @@ namespace lard
     : UnaryOp<ScaleOp<Xpr>,Xpr>(x), m_Scale(scale)
     {}
       
-    Index rows() const noexcept {return this->mr_Xpr.rows();};
+    Index rows() const _BTK_NOEXCEPT {return this->m_Xpr.rows();};
 
-    auto values() const noexcept -> decltype(this->m_Scale * this->mr_Xpr.derived().values())
+    auto values() const _BTK_NOEXCEPT -> decltype(std::declval<double>() * _BTK_LARD_DECLVAL_NESTED(Xpr).values())
     {
-      return this->m_Scale * this->mr_Xpr.derived().values();
+      return this->m_Scale * this->m_Xpr.values();
     };
 
-    auto residuals() const noexcept -> decltype(this->mr_Xpr.derived().residuals())
+    auto residuals() const _BTK_NOEXCEPT -> decltype(_BTK_LARD_DECLVAL_NESTED(Xpr).residuals())
     {
-      return this->mr_Xpr.derived().residuals();
+      return this->m_Xpr.residuals();
     };
   };
   
@@ -892,10 +872,7 @@ namespace lard
   template <typename Xpr>
   struct Traits<NormalizedOp<Xpr>>
   {
-    enum : int
-    {
-      Processing = ValuesOnly,
-    };
+    static _BTK_CONSTEXPR int Processing = ValuesOnly;
   };
   
   template <typename Xpr>
@@ -908,24 +885,23 @@ namespace lard
     : UnaryOp<NormalizedOp<Xpr>,Xpr>(x)
     {};
     
-    Index rows() const noexcept {return this->mr_Xpr.rows();};
+    Index rows() const _BTK_NOEXCEPT {return this->m_Xpr.rows();};
 
-    auto values() const noexcept -> decltype(this->mr_Xpr.derived().values().cwiseQuotient((this->mr_Xpr.derived().values().square().rowwise().sum() >= std::numeric_limits<double>::epsilon()).select(this->mr_Xpr.derived().values().square().rowwise().sum().sqrt(),1.0).replicate(1,3)))
+    auto values() const _BTK_NOEXCEPT -> decltype(_BTK_LARD_DECLVAL_NESTED(Xpr).values().cwiseQuotient((_BTK_LARD_DECLVAL_NESTED(Xpr).values().square().rowwise().sum() >= std::numeric_limits<double>::epsilon()).select(_BTK_LARD_DECLVAL_NESTED(Xpr).values().square().rowwise().sum().sqrt(),1.0).replicate(1,3)))
     {
-      const auto& xpr = this->mr_Xpr.derived();
-      const auto temp = xpr.values().square().rowwise().sum();
-      const auto norm = (temp >= std::numeric_limits<double>::epsilon()).select(temp.sqrt(),1.0).replicate(1,xpr.cols());
-      return xpr.values().cwiseQuotient(norm);
+      const auto temp = this->m_Xpr.values().square().rowwise().sum();
+      const auto norm = (temp >= std::numeric_limits<double>::epsilon()).select(temp.sqrt(),1.0).replicate(1,this->m_Xpr.cols());
+      return this->m_Xpr.values().cwiseQuotient(norm);
     };
 
-    auto residuals() const noexcept -> decltype(this->mr_Xpr.derived().residuals())
+    auto residuals() const _BTK_NOEXCEPT -> decltype(_BTK_LARD_DECLVAL_NESTED(Xpr).residuals())
     {
-      return this->mr_Xpr.derived().residuals();
+      return this->m_Xpr.residuals();
     };
   };
   
   template <typename Derived>
-  const NormalizedOp<Derived> Base<Derived>::normalized() const noexcept
+  inline const NormalizedOp<Derived> Base<Derived>::normalized() const _BTK_NOEXCEPT
   {
     return NormalizedOp<Derived>(*this);
   };
@@ -935,10 +911,7 @@ namespace lard
   template <typename XprOne, typename XprTwo>
   struct Traits<CrossOp<XprOne,XprTwo>>
   {
-    enum : int
-    {
-      Processing = Full,
-    };
+    static _BTK_CONSTEXPR int Processing = Full;
   };
   
   template <typename XprOne, typename XprTwo>
@@ -953,27 +926,27 @@ namespace lard
     CrossOp(const Base<XprOne>& x1, const Base<XprTwo>& x2)
     : BinaryOp<CrossOp<XprOne, XprTwo>, XprOne, XprTwo>(x1,x2)
     {
-      assert(this->mr_Xpr1.rows() == this->mr_Xpr2.rows());
+      assert(this->m_Xpr1.rows() == this->m_Xpr2.rows());
     };
     
-    Index rows() const noexcept {return this->mr_Xpr1.rows();};
+    Index rows() const _BTK_NOEXCEPT {return this->m_Xpr1.rows();};
 
-    auto values() const noexcept -> Eigen::internal::CrossOpValues<decltype(this->mr_Xpr1.derived().values()),decltype(this->mr_Xpr2.derived().values())>
+    auto values() const _BTK_NOEXCEPT -> Eigen::internal::CrossOpValues<decltype(_BTK_LARD_DECLVAL_NESTED(XprOne).values()),decltype(_BTK_LARD_DECLVAL_NESTED(XprTwo).values())>
     {
-      using V1 = decltype(this->mr_Xpr1.derived().values());
-      using V2 = decltype(this->mr_Xpr2.derived().values());
-      return Eigen::internal::CrossOpValues<V1,V2>(this->mr_Xpr1.derived().values(), this->mr_Xpr2.derived().values());
+      using V1 = decltype(this->m_Xpr1.values());
+      using V2 = decltype(this->m_Xpr2.values());
+      return Eigen::internal::CrossOpValues<V1,V2>(this->m_Xpr1.values(), this->m_Xpr2.values());
     };
   
-    auto residuals() const noexcept -> decltype(CrossOp::generateResiduals((this->mr_Xpr1.derived().residuals() >= 0.0) && (this->mr_Xpr2.derived().residuals() >= 0.0)))
+    auto residuals() const _BTK_NOEXCEPT -> decltype(CrossOp::generateResiduals((_BTK_LARD_DECLVAL_NESTED(XprOne).residuals() >= 0.0) && (_BTK_LARD_DECLVAL_NESTED(XprTwo).residuals() >= 0.0)))
     {
-      return CrossOp::generateResiduals((this->mr_Xpr1.derived().residuals() >= 0.0) && (this->mr_Xpr2.derived().residuals() >= 0.0));
+      return CrossOp::generateResiduals((this->m_Xpr1.residuals() >= 0.0) && (this->m_Xpr2.residuals() >= 0.0));
     };
   };
   
   template <typename Derived>
   template <typename U>
-  inline const CrossOp<Derived,U> Base<Derived>::cross(const Base<U>& other) const noexcept
+  inline const CrossOp<Derived,U> Base<Derived>::cross(const Base<U>& other) const _BTK_NOEXCEPT
   {
     return CrossOp<Derived,U>(*this,other);
   };
@@ -983,10 +956,7 @@ namespace lard
   template <typename XprOne, typename XprTwo>
   struct Traits<TransformOp<XprOne,XprTwo>>
   {
-    enum : int
-    {
-      Processing = Full,
-    };
+    static _BTK_CONSTEXPR int Processing = Full;
   };
   
   template <typename XprOne, typename XprTwo>
@@ -999,24 +969,24 @@ namespace lard
     : BinaryOp<TransformOp<XprOne, XprTwo>, XprOne, XprTwo>(x1,x2)
     {};
     
-    Index rows() const noexcept {return this->mr_Xpr1.rows();};
+    Index rows() const _BTK_NOEXCEPT {return this->m_Xpr1.rows();};
 
-    auto values() const noexcept -> Eigen::internal::TransformOpValues<decltype(this->mr_Xpr1.derived().values()),decltype(this->mr_Xpr2.derived().values())>
+    auto values() const _BTK_NOEXCEPT -> Eigen::internal::TransformOpValues<decltype(_BTK_LARD_DECLVAL_NESTED(XprOne).values()),decltype(_BTK_LARD_DECLVAL_NESTED(XprTwo).values())>
     {
-      using V1 = decltype(this->mr_Xpr1.derived().values());
-      using V2 = decltype(this->mr_Xpr2.derived().values()); 
-      return Eigen::internal::TransformOpValues<V1,V2>(this->mr_Xpr1.derived().values(), this->mr_Xpr2.derived().values());
+      using V1 = decltype(this->m_Xpr1.values());
+      using V2 = decltype(this->m_Xpr2.values()); 
+      return Eigen::internal::TransformOpValues<V1,V2>(this->m_Xpr1.values(), this->m_Xpr2.values());
     };
 
-    auto residuals() const noexcept -> decltype(TransformOp::generateResiduals((this->mr_Xpr1.derived().residuals() >= 0.0) && (this->mr_Xpr2.derived().residuals() >= 0.0)))
+    auto residuals() const _BTK_NOEXCEPT -> decltype(TransformOp::generateResiduals((_BTK_LARD_DECLVAL_NESTED(XprOne).residuals() >= 0.0) && (_BTK_LARD_DECLVAL_NESTED(XprTwo).residuals() >= 0.0)))
     {
-      return TransformOp::generateResiduals((this->mr_Xpr1.derived().residuals() >= 0.0) && (this->mr_Xpr2.derived().residuals() >= 0.0));
+      return TransformOp::generateResiduals((this->m_Xpr1.residuals() >= 0.0) && (this->m_Xpr2.residuals() >= 0.0));
     };
   };
 
   template <typename Derived>
   template <typename U>
-  inline const TransformOp<Derived,U> Base<Derived>::transform(const Base<U>& other) const noexcept
+  inline const TransformOp<Derived,U> Base<Derived>::transform(const Base<U>& other) const _BTK_NOEXCEPT
   {
     return TransformOp<Derived,U>(*this,other);
   };
@@ -1026,10 +996,7 @@ namespace lard
   template <typename Xpr>
   struct Traits<ReplicateOp<Xpr>>
   {
-    enum : int
-    {
-      Processing = None,
-    };
+    static _BTK_CONSTEXPR int Processing = None;
   };
   
   template <typename Xpr>
@@ -1042,23 +1009,30 @@ namespace lard
   public:
     ReplicateOp(const Base<Xpr>& x, Index rows)
     : UnaryOp<ReplicateOp<Xpr>,Xpr>(x), m_Rows(rows)
-    {}
+    {};
       
-    Index rows() const noexcept {return this->mr_Xpr.rows() * this->m_Rows;};
-
-    auto values() const noexcept -> decltype(this->mr_Xpr.values().replicate(this->m_Rows,1))
+    ReplicateOp(const ReplicateOp& other)
+    : UnaryOp<ReplicateOp<Xpr>,Xpr>(other), m_Rows(other.m_Rows)
+    {};
+      
+    Index rows() const _BTK_NOEXCEPT
     {
-      return this->mr_Xpr.values().replicate(this->m_Rows,1);
+      return this->m_Xpr.rows() * this->m_Rows;
     };
 
-    auto residuals() const noexcept -> decltype(this->mr_Xpr.residuals().replicate(this->m_Rows,1))
+    auto values() const _BTK_NOEXCEPT -> Eigen::Replicate<typename std::decay<decltype(_BTK_LARD_DECLVAL_NESTED(Xpr).values())>::type, Eigen::Dynamic, Eigen::Dynamic>
     {
-      return this->mr_Xpr.residuals().replicate(this->m_Rows,1);
+      return this->m_Xpr.values().replicate(this->m_Rows,1);
+    };
+
+    auto residuals() const _BTK_NOEXCEPT -> Eigen::Replicate<typename std::decay<decltype(_BTK_LARD_DECLVAL_NESTED(Xpr).residuals())>::type, Eigen::Dynamic, Eigen::Dynamic>
+    {
+      return this->m_Xpr.residuals().replicate(this->m_Rows,1);
     };
   };
   
   template <typename Derived>
-  inline const ReplicateOp<Derived> Base<Derived>::replicate(Index rows) const noexcept
+  inline const ReplicateOp<Derived> Base<Derived>::replicate(Index rows) const _BTK_NOEXCEPT
   {
     return ReplicateOp<Derived>(*this,rows);
   };
@@ -1068,10 +1042,7 @@ namespace lard
   template <typename Xpr>
   struct Traits<InverseOp<Xpr>>
   {
-    enum : int
-    {
-      Processing = ValuesOnly,
-    };
+    static _BTK_CONSTEXPR int Processing = ValuesOnly;
   };
   
   template <typename Xpr>
@@ -1086,22 +1057,22 @@ namespace lard
     : UnaryOp<InverseOp<Xpr>,Xpr>(x)
     {};
     
-    Index rows() const noexcept {return this->mr_Xpr.rows();};
+    Index rows() const _BTK_NOEXCEPT {return this->m_Xpr.rows();};
 
-    auto values() const noexcept -> decltype(Eigen::internal::InverseOpValues<decltype(this->mr_Xpr.derived().values())>(this->mr_Xpr.derived().values()))
+    auto values() const _BTK_NOEXCEPT -> decltype(Eigen::internal::InverseOpValues<decltype(_BTK_LARD_DECLVAL_NESTED(Xpr).values())>(_BTK_LARD_DECLVAL_NESTED(Xpr).values()))
     {
-      using V = decltype(this->mr_Xpr.derived().values());
-      return Eigen::internal::InverseOpValues<V>(this->mr_Xpr.derived().values());
+      using V = decltype(this->m_Xpr.values());
+      return Eigen::internal::InverseOpValues<V>(this->m_Xpr.values());
     };
 
-    auto residuals() const noexcept -> decltype(this->mr_Xpr.derived().residuals())
+    auto residuals() const _BTK_NOEXCEPT -> decltype(_BTK_LARD_DECLVAL_NESTED(Xpr).residuals())
     {
-      return this->mr_Xpr.derived().residuals();
+      return this->m_Xpr.residuals();
     };
   };
   
   template <typename Derived>
-  inline const InverseOp<Derived> Base<Derived>::inverse() const noexcept
+  inline const InverseOp<Derived> Base<Derived>::inverse() const _BTK_NOEXCEPT
   {
     return InverseOp<Derived>(*this);
   };
@@ -1111,10 +1082,7 @@ namespace lard
   template <typename Xpr>
   struct Traits<EulerAnglesOp<Xpr>>
   {
-    enum : int
-    {
-      Processing = ValuesOnly,
-    };
+    static _BTK_CONSTEXPR int Processing = ValuesOnly;
   };
   
   template <typename Xpr>
@@ -1123,11 +1091,8 @@ namespace lard
     using Values = typename Traits<Xpr>::Values;
     using Residuals = typename Traits<Xpr>::Residuals;
     using Index = typename Values::Index;
-    enum : int
-    {
-      ColsAtCompileTime = 3,
-      Processing = Traits<EulerAnglesOp<Xpr>>::Processing
-    };
+    static _BTK_CONSTEXPR int ColsAtCompileTime = 3;
+    static _BTK_CONSTEXPR int Processing = Traits<EulerAnglesOp<Xpr>>::Processing;
   }; 
   
   template <typename Xpr>
@@ -1147,22 +1112,22 @@ namespace lard
       m_Axis0(a0), m_Axis1(a1), m_Axis2(a2)
     {};
       
-    Index rows() const noexcept {return this->mr_Xpr.rows();};
+    Index rows() const _BTK_NOEXCEPT {return this->m_Xpr.rows();};
       
-    auto values() const noexcept -> decltype(Eigen::internal::EulerAnglesOpValues<decltype(this->mr_Xpr.derived().values())>(this->mr_Xpr.derived().values(), this->m_Axis0, this->m_Axis1, this->m_Axis2))
+    auto values() const _BTK_NOEXCEPT -> Eigen::internal::EulerAnglesOpValues<decltype(_BTK_LARD_DECLVAL_NESTED(Xpr).values())>
     {
-      using V = decltype(this->mr_Xpr.derived().values());
-      return Eigen::internal::EulerAnglesOpValues<V>(this->mr_Xpr.derived().values(), this->m_Axis0, this->m_Axis1, this->m_Axis2);
+      using V = decltype(this->m_Xpr.values());
+      return Eigen::internal::EulerAnglesOpValues<V>(this->m_Xpr.values(), this->m_Axis0, this->m_Axis1, this->m_Axis2);
     };
 
-    auto residuals() const noexcept -> decltype(this->mr_Xpr.derived().residuals())
+    auto residuals() const _BTK_NOEXCEPT -> decltype(_BTK_LARD_DECLVAL_NESTED(Xpr).residuals())
     {
-      return this->mr_Xpr.derived().residuals();
+      return this->m_Xpr.residuals();
     };
   };
   
   template <typename Derived>
-  const EulerAnglesOp<Derived> Base<Derived>::eulerAngles(Index a0, Index a1, Index a2) const noexcept
+  inline const EulerAnglesOp<Derived> Base<Derived>::eulerAngles(Index a0, Index a1, Index a2) const _BTK_NOEXCEPT
   {
     return EulerAnglesOp<Derived>(*this,a0,a1,a2);
   };
@@ -1170,13 +1135,13 @@ namespace lard
   // ----------------------------------------------------------------------- //
 
   template <typename XprOne, typename XprTwo>
-  const DifferenceOp<XprOne,XprTwo> operator-(const Base<XprOne>& x1, const Base<XprTwo>& x2) noexcept
+  const DifferenceOp<XprOne,XprTwo> operator-(const Base<XprOne>& x1, const Base<XprTwo>& x2) _BTK_NOEXCEPT
   {
     return DifferenceOp<XprOne,XprTwo>(x1,x2);
   };
   
   template <typename XprOne, typename XprTwo>
-  const SumOp<XprOne,XprTwo> operator+(const Base<XprOne>& x1, const Base<XprTwo>& x2) noexcept
+  const SumOp<XprOne,XprTwo> operator+(const Base<XprOne>& x1, const Base<XprTwo>& x2) _BTK_NOEXCEPT
   {
     return SumOp<XprOne,XprTwo>(x1,x2);
   };

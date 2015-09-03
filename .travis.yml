@@ -1,30 +1,58 @@
+# The main language used in the project is the C++ language.
+# The setting of the language to 'objective-c' is only for travis to know that we want to use
+# a MacOS X building environment
 language: objective-c
 
 # To prepare the system to install prerequisites or dependencies
 before_install:
-  - brew update
+  - brew update 
+  - brew unlink cmake # By default, CMake 3.0 (or less) is used
   
 # To install any prerequisites or dependencies necessary to run your build
 install:  
-  - brew install swig cmake
+  - brew install cmake # And we need at least CMake 3.1 (for the activation of C++11)
   
 # To prepare your build for testing
 before_script:
-  - git clone https://code.google.com/p/b-tk.data/ Testing/Data
-      
+  - git clone https://github.com/Biomechanical-ToolKit/BTKData.git Testing/Data
+
+# Compilation of the project and testing
 script:
   - ROOT=`pwd`
   - rm -rf build
   - mkdir build
   - cd build
-  - cmake -DCMAKE_BUILD_TYPE:CHAR=Release -DBUILD_SHARED_LIBS:BOOL=$WITH_SHARED_LIBS -DBTK_WRAP_PYTHON:BOOL=1 -DBUILD_TESTING:BOOL=1 -DBTK_TESTING_DATA_PATH:CHAR=$ROOT/Testing/Data -G "Unix Makefiles" ..
-  - make
-  - ctest -VV
-
-compiler:
-  - clang
+  - if [ "$SELECTED_COMPILER" = "GCC" ]; then export CC=gcc-4.8 && export CXX=g++-4.8; fi
+  - if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then cmake -DCMAKE_BUILD_TYPE:CHAR=$WITH_BUILD_TYPE -DBUILD_SHARED_LIBS:BOOL=$WITH_SHARED_LIBS -DWITH_COVERALLS_ENABLED:BOOL=$WITH_COVERALLS_ENABLED -DBUILD_TESTING:BOOL=1 -DBTK_TESTING_DATA_PATH:CHAR=$ROOT/Testing/Data -G "Unix Makefiles" ..; fi
+  - if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then make; fi
+  - if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then ctest -VV; fi
   
+after_success:
+  - if [ ${COVERITY_SCAN_BRANCH} != 1 ] && [ ${WITH_COVERALLS_ENABLED} == 1 ]; then make coveralls; fi
+
+# Building matrix used by the 'script' section
 env:
+  global:
+    - secure: "REQZy/uM9qJv7D3pGsCs1EuAl9ZSbSjeNcpbiFkigUZY117JlW1CnAhUMQU8whGL7MuGuJjbGCsAfOyKOLZfU8Z6JzZXkGWUMRwiidmfM3F3QjdC33H6dIWI5dw4E6GylraUSCqXtFV3gaioqf0HbuVpGkBH2RqC5GFAt96O1BA="
+  
   matrix:
-    - WITH_SHARED_LIBS=0
-    - WITH_SHARED_LIBS=1
+    - SELECTED_COMPILER=Clang WITH_BUILD_TYPE=Release WITH_SHARED_LIBS=1 WITH_COVERITY_ENABLED=0 WITH_COVERALLS_ENABLED=0
+    - SELECTED_COMPILER=GCC   WITH_BUILD_TYPE=Release WITH_SHARED_LIBS=1 WITH_COVERITY_ENABLED=0 WITH_COVERALLS_ENABLED=0
+    - SELECTED_COMPILER=GCC   WITH_BUILD_TYPE=Release WITH_SHARED_LIBS=0 WITH_COVERITY_ENABLED=1 WITH_COVERALLS_ENABLED=0
+    - SELECTED_COMPILER=Clang WITH_BUILD_TYPE=Debug   WITH_SHARED_LIBS=0 WITH_COVERITY_ENABLED=0 WITH_COVERALLS_ENABLED=1
+      
+matrix:
+  # Allow failure for Coverity as this is not a standard compiler (COVERITY_SCAN_BRANCH is defined by the coverity_scan addon)
+  allow_failures:
+    - env: COVERITY_SCAN_BRANCH=1
+
+# Coverity configuration
+addons:
+  coverity_scan:
+    project:
+      name: "Biomechanical-ToolKit/BTKCore"
+      description: "Build submitted via Travis CI"
+    notification_email: arnaud.barre@gmail.com
+    build_command_prepend: "export CC=gcc-4.8; export CXX=g++-4.8; cmake -DWITH_COVERITY_ENABLED:BOOL=$WITH_COVERITY_ENABLED .; make clean"
+    build_command: "make coverity"
+    branch_pattern: coverity_scan
